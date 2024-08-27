@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Chatbot</title>
+    <style>
+        /* Basic styling for chatbot */
+        .chatbot {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .chatbox {
+            width: 250px;
+            height: 300px;
+            background-color: #f4f4f4;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            display: none;
+            flex-direction: column;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .chatbox-header {
+            background-color: #00796b;
+            color: white;
+            padding: 5px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chatbox-body {
+            padding: 10px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .bot-message {
+            background-color: #00796b;
+            color: white;
+        }
+
+        .user-message {
+            background-color: #e0f2f1;
+            color: #333;
+            align-self: flex-end;
+        }
+
+        .chatbox-footer {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ccc;
+        }
+
+        .chatbox-footer input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .chatbox-footer button {
+            padding: 10px;
+            background-color: #00796b;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .chatbox-footer button:hover {
+            background-color: #004d40;
+        }
+
+        .chatbox-toggle {
+            background-color: #00796b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .chatbox-toggle:hover {
+            background-color: #004d40;
+        }
+    </style>
+</head>
+<body>
+    <div class="chatbot">
+        <div class="chatbox">
+            <div class="chatbox-header">
+                <h4>Feedback Bot</h4>
+                <button id="chatbox-close" onclick="closeChat()">x</button>
+            </div>
+            <div class="chatbox-body" id="chatbox-body">
+                <div class="message bot-message">Hi! My Name is Sourav. How can I help you today? Please share your feedback.</div>
+            </div>
+            <div class="chatbox-footer">
+                <input type="text" id="user-input" placeholder="Type your feedback here..." />
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+        <button class="chatbox-toggle" onclick="openChat()">Chat with us</button>
+    </div>
+
+    <script>
+        function openChat() {
+            document.querySelector('.chatbox').style.display = 'flex';
+        }
+
+        function closeChat() {
+            document.querySelector('.chatbox').style.display = 'none';
+        }
+
+        function sendMessage() {
+            var userInput = document.getElementById('user-input').value;
+            if (userInput.trim() !== '') {
+                var chatboxBody = document.getElementById('chatbox-body');
+                var userMessage = document.createElement('div');
+                userMessage.className = 'message user-message';
+                userMessage.textContent = userInput;
+                chatboxBody.appendChild(userMessage);
+                chatboxBody.scrollTop = chatboxBody.scrollHeight;
+                document.getElementById('user-input').value = '';
+
+                // Simulate bot response
+                var botResponse = document.createElement('div');
+                botResponse.className = 'message bot-message';
+                botResponse.textContent = 'Thank you for your feedback!';
+                setTimeout(function() {
+                    chatboxBody.appendChild(botResponse);
+                    chatboxBody.scrollTop = chatboxBody.scrollHeight;
+                }, 1000);
+            }
+        }
+    </script>
+</body>
+</html>
