@@ -1,438 +1,450 @@
+<?php
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login_signup.php");
+    exit();
+}
+
+require 'backend/db.php'; // Ensure this file includes database connection setup
+
+$user_id = $_SESSION['user_id'];
+
+// Handle adding a new goal
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_goal'])) {
+    $goalName = htmlspecialchars($_POST['goalName']);
+    $goalTarget = floatval($_POST['goalTarget']);
+    $goalDeadline = htmlspecialchars($_POST['goalDeadline']);
+    
+    $stmt = $pdo->prepare("INSERT INTO goals (user_id, goal_name, target_amount, timeframe) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$user_id, $goalName, $goalTarget, (strtotime($goalDeadline) - time()) / (60 * 60 * 24 * 30)]);
+}
+
+// Handle editing an existing goal
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_goal'])) {
+    $goalId = intval($_POST['goalId']);
+    $goalTarget = floatval($_POST['goalTarget']);
+    $goalDeadline = htmlspecialchars($_POST['goalDeadline']);
+    
+    $stmt = $pdo->prepare("UPDATE goals SET target_amount = ?, timeframe = ? WHERE id = ? AND user_id = ?");
+    $stmt->execute([$goalTarget, (strtotime($goalDeadline) - time()) / (60 * 60 * 24 * 30), $goalId, $user_id]);
+}
+
+// Handle deleting a goal
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_goal'])) {
+    $goalId = intval($_POST['goalId']);
+    
+    $stmt = $pdo->prepare("DELETE FROM goals WHERE id = ? AND user_id = ?");
+    $stmt->execute([$goalId, $user_id]);
+}
+
+// Retrieve user goals
+$stmt = $pdo->prepare("SELECT * FROM goals WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$goals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Handle goal analysis
+$analysisResult = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['analyze_goal'])) {
+    $goalNameToAnalyze = htmlspecialchars($_POST['goalSelect']);
+    
+    // Perform analysis (replace this with actual analysis logic)
+    $analysisResult = "Analysis result for {$goalNameToAnalyze}: You are on track!";
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Goals - FinTrack</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Financial Goals - FinTrack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
     <style>
-    /* Global Styles */
-/* Internal CSS for Transactions page */
+    /* Main content styling */
+    main {
+        background-color: #f9f9f9;
+        padding: 40px;
+        font-family: 'Arial', sans-serif;
+        color: #333;
+    }
 
-/* Navigation Bar Design Start */
-.navbar {
-    background-color: #004d40; /* Dark green background */
-    padding: 1rem; /* Match padding */
-    transition: background-color 0.3s;
-    margin-bottom: 20px; /* Space below navbar */
-    position: fixed; /* Fixes navbar to the top */
-    top: 0; /* Aligns navbar to the top of the page */
-    left: 0; /* Aligns navbar to the left edge */
-    width: 100%; /* Full width */
-    z-index: 1000; /* Ensures navbar is above other content */
-}
+    /* Container styling */
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
 
-.navbar:hover {
-    background-color: #00332d; /* Darker green on hover */
-}
+    /* Heading styles */
+    h1 {
+        font-size: 2.5em;
+        color: #2d572c;
+        margin-bottom: 20px;
+    }
 
-.navbar-brand {
-    font-size: 1.5rem; /* Match font size */
-    color: #fff;
-    display: flex;
-    align-items: center;
-}
+    h2 {
+        font-size: 2em;
+        color: #2d572c;
+        margin-bottom: 15px;
+    }
 
-.navbar-brand img {
-    width: 40px; /* Match logo size */
-    margin-right: 10px;
-}
+    /* Form label styling */
+    .form-label {
+        font-weight: bold;
+        color: #2d572c;
+    }
 
-.navbar a {
-    color: #fff;
-    margin-left: 1rem; /* Spacing between links */
-    transition: color 0.3s;
-}
+    /* Form control styling */
+    .form-control {
+        border: 2px solid #2d572c;
+        border-radius: 5px;
+        padding: 10px;
+        font-size: 1em;
+    }
 
-.navbar a:hover,
-.navbar a.active {
-    color: #aed581; /* Light green for active or hover */
-}
+    /* Custom button styling */
+    .btn-custom {
+        background-color: #2d572c;
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        font-size: 1em;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+    }
 
-.navbar .form-inline {
-    display: flex;
-    justify-content: center;
-    flex-grow: 1;
-}
+    .btn-custom:hover {
+        background-color: #1a3e1d;
+    }
 
-.navbar .form-inline .form-control {
-    width: 250px; /* Adjust width to match other pages */
-    transition: width 0.3s ease-in-out;
-}
+    /* Card styling */
+    .card {
+        border: 1px solid #2d572c;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
 
-.navbar .form-inline .form-control:focus {
-    width: 300px; /* Expanded width on focus */
-}
+    .card-body {
+        padding: 20px;
+    }
 
-.navbar .btn-outline-light {
-    color: #fff;
-    border-color: #fff;
-    margin-left: 8px;
-}
+    .card-title {
+        font-size: 1.5em;
+        color: #2d572c;
+        margin-bottom: 15px;
+    }
 
-.navbar .btn-outline-light:hover {
-    color: #004d40;
-    background-color: #aed581;
-    border-color: #aed581;
-}
+    .goal-progress {
+        font-size: 1em;
+        color: #333;
+    }
 
-/* Navigation Bar Link Styles */
-.navbar-nav .nav-link {
-    color: #fff;
-    margin-left: 1rem; /* Spacing between nav links */
-    transition: color 0.3s;
-}
+    /* Progress bar styling */
+    .progress {
+        height: 20px;
+        background-color: #e6e6e6;
+        border-radius: 10px;
+    }
 
-.navbar-nav .nav-link:hover,
-.navbar-nav .nav-link.active {
-    color: #aed581; /* Light green for active or hover */
-}
-/* Navigation Bar Design End */
+    .progress-bar-custom {
+        background-color: #2d572c;
+        border-radius: 10px;
+    }
 
-/* Button Styles */
-.btn-primary {
-    background-color: #27ae60; /* Green color for primary buttons */
-    border-color: #27ae60;
-}
+    /* Modal content styling */
+    .modal-content {
+        border-radius: 10px;
+    }
 
-.btn-primary:hover {
-    background-color: #2ecc71;
-    border-color: #2ecc71;
-}
+    .modal-header {
+        background-color: #2d572c;
+        color: #fff;
+        border-bottom: 2px solid #1a3e1d;
+    }
 
-.btn-secondary {
-    background-color: #ecf0f1; /* Light color for secondary buttons */
-    border-color: #bdc3c7;
-}
+    .btn-danger {
+        background-color: #dc3545;
+        color: #fff;
+        border-radius: 5px;
+        padding: 10px 20px;
+    }
 
-.btn-secondary:hover {
-    background-color: #bdc3c7;
-    border-color: #aab7b8;
-}
+    .btn-danger:hover {
+        background-color: #c82333;
+    }
 
-/* Table Styles */
-.table {
-    background-color: #fff; /* White background for table */
-}
-
-.table-striped tbody tr:nth-of-type(odd) {
-    background-color: #f9f9f9; /* Light grey for striped rows */
-}
-
-/* Footer Design Start */
-footer {
-    background-color: #004d40;
-    color: #fff;
-    padding: 1rem; /* Match padding with navbar */
-    text-align: center;
-    margin-top: 2rem;
-}
-
-.footer-links a {
-    color: #aed581;
-    margin: 0 0.5rem;
-    text-decoration: none;
-}
-
-.footer-links a:hover {
-    text-decoration: underline;
-}
-/* Footer Design End */
-
-/* Additional Styles */
-.logo {
-    max-width: 150px; /* Adjust the width as needed */
-    height: auto;     /* Maintain aspect ratio */
-}
-
-.table th, .table td {
-    text-align: center; /* Center-align text in table cells */
-}
-
-.card {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-}
-
-.card-title {
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-}
-
-.btn-custom {
-    background-color: #28a745;
-    color: #ffffff;
-}
-
-.btn-custom:hover {
-    background-color: #218838;
-    color: #ffffff;
-}
-
-.form-control {
-    border-radius: 0.25rem;
-}
+    /* Alert box styling */
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 2px solid #c3e6cb;
+        border-radius: 5px;
+        padding: 15px;
+    }
 </style>
+
 </head>
 <body>
-
 <!-- Navigation Bar -->
-<nav class="navbar navbar-expand-lg navbar-dark">
-    <a class="navbar-brand" href="index.php">
-        <img src="images/FinTrack.png" alt="FinTrack Logo"> FinTrack
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark" style="
+    background: linear-gradient(135deg, #004d00 50%, #002600 50%); /* Dual-shade background */
+    padding: 1rem;
+    margin-bottom: 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+">
+    <!-- Navbar Brand -->
+    <a class="navbar-brand" href="index.php" style="
+        font-size: 1.5rem;
+        color: #fff;
+        display: flex;
+        align-items: center;
+    ">
+        <img src="images/FinTrack.png" alt="FinTrack Logo" style="
+            width: 40px;
+            margin-right: 10px;
+        "> 
+        FinTrack
     </a>
+    
+    <!-- Navbar Toggler -->
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
+    
+    <!-- Navbar Links -->
     <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav me-auto">
-            <!-- Left side links -->
-            <li class="nav-item">
-                <a class="nav-link" href="dashboard.php">Dashboard</a>
+        <ul class="navbar-nav mx-auto" style="
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center align the nav items */
+            flex-grow: 1; /* Allow navbar items to grow */
+        ">
+            <li class="nav-item" style="margin-left: 1rem;">
+                <a class="nav-link active" href="dashboard.php" style="
+                    color: #fff;
+                    transition: color 0.3s, transform 0.3s;
+                ">Dashboard</a>
             </li>
-            <li class="nav-item">
-            <li class="nav-item">
-                <a class="nav-link active" href="goals.php">Goals</a>
+            <li class="nav-item" style="margin-left: 1rem;">
+                <a class="nav-link" href="goals.php" style="
+                    color: #fff;
+                    transition: color 0.3s, transform 0.3s;
+                ">Goals</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="transactions.php">Transactions</a>
+            <li class="nav-item" style="margin-left: 1rem;">
+                <a class="nav-link" href="transactions.php" style="
+                    color: #fff;
+                    transition: color 0.3s, transform 0.3s;
+                ">Transactions</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="reports.php">Reports</a>
+            <li class="nav-item" style="margin-left: 1rem;">
+                <a class="nav-link" href="reports.php" style="
+                    color: #fff;
+                    transition: color 0.3s, transform 0.3s;
+                ">Reports</a>
             </li>
         </ul>
-        <form class="d-flex mx-auto">
-            <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
-            <button class="btn btn-outline-light" type="submit">Search</button>
-        </form>
-        <ul class="navbar-nav ms-auto">
-            <!-- Right side links -->
+        <div>
+        <!-- Logout Button aligned to the right -->
+        <ul class="navbar-nav" style="margin-left: auto;">
             <li class="nav-item">
-                <a class="nav-link" href="index.php">Home</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="help_support.php">Help Center</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="login_signup.php">Login</a>
+                <form action="logout.php" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-outline-light" style="
+                        color: #fff;
+                        border-color: #fff;
+                        transition: background-color 0.3s, color 0.3s;
+                    ">Logout</button>
+                </form>
             </li>
         </ul>
+        </div>
     </div>
 </nav>
 
-<!-- Feedback Modal -->
-<iframe src="chatbot.html" style="border:none; position:fixed; bottom:0; right:0; width:300px; height:400px; z-index:1000;"></iframe>
+
+    <iframe src="chatbot.html" style="border:none; position:fixed; bottom:0; right:0; width:300px; height:400px; z-index:1000;"></iframe>
 
 
-<div class="container mt-4">
-    <h1>Goals</h1>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <button class="btn btn-primary" data-toggle="modal" data-target="#addGoalModal">Add New Goal</button>
-    </div>
+<main>
+    <!-- Main Content -->
+    <div class="container mt-5">
+        <h1>My Financial Goals</h1>
+        <p>Track your progress and achieve your financial targets with customized goals.</p>
 
-    <!-- Filter Form -->
-    <h3>Filter Goals</h3>
-    <form id="filterForm">
-        <div class="form-group">
-            <label for="statusFilter">Status</label>
-            <select class="form-control" id="statusFilter">
-                <option value="">All</option>
-                <option value="achieved">Achieved</option>
-                <option value="pending">Pending</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="deadlineFilter">Deadline</label>
-            <input type="date" class="form-control" id="deadlineFilter">
-        </div>
-        <button type="submit" class="btn btn-primary">Apply Filters</button>
-    </form>
-
-    <!-- Categories -->
-    <h3 class="mt-4">Categories</h3>
-    <div class="btn-group" role="group" aria-label="Goal Categories">
-        <button type="button" class="btn btn-secondary">All</button>
-        <button type="button" class="btn btn-secondary">Financial</button>
-        <button type="button" class="btn btn-secondary">Health</button>
-        <button type="button" class="btn btn-secondary">Personal Development</button>
-    </div>
-
-    <!-- Goal List -->
-    <div class="container mt-4" id="goalList">
-        <!-- Sample Goal Card -->
-        <div class="card mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Emergency Fund</h5>
-                <p class="card-text">Target Amount: $5000</p>
-                <p class="card-text">Deadline: 2024-12-31</p>
-                <div class="progress mb-2">
-                    <div class="progress-bar bg-success" role="progressbar" style="width: 50%;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100">50%</div>
+        <!-- Add New Goal Section -->
+        <section class="add-goal-section mb-5">
+            <h2>Add New Goal</h2>
+            <form method="post">
+                <div class="mb-3">
+                    <label for="goalName" class="form-label">Goal Name:</label>
+                    <input type="text" id="goalName" name="goalName" class="form-control" required>
                 </div>
-                <button class="btn btn-success btn-sm" onclick="markAsAchieved(this)">Mark as Achieved</button>
-                <button class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editGoalModal">Edit</button>
-                <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#deleteGoalModal">Delete</button>
+                <div class="mb-3">
+                    <label for="goalTarget" class="form-label">Target Amount:</label>
+                    <input type="number" id="goalTarget" name="goalTarget" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label for="goalDeadline" class="form-label">Deadline:</label>
+                    <input type="date" id="goalDeadline" name="goalDeadline" class="form-control" required>
+                </div>
+                <button type="submit" name="add_goal" class="btn btn-custom">Add Goal</button>
+            </form>
+        </section>
+
+        <!-- Goals Section -->
+        <section class="goals-section mb-5">
+            <div class="row">
+                <?php foreach ($goals as $goal) : ?>
+                    <?php
+                    $progress = ($goal['current_amount'] / $goal['target_amount']) * 100;
+                    ?>
+                    <div class="col-md-4">
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title"><?= htmlspecialchars($goal['goal_name']); ?></h5>
+                                <p class="goal-progress">Target: $<?= htmlspecialchars(number_format($goal['target_amount'], 2)); ?></p>
+                                <p class="goal-progress">Current: $<?= htmlspecialchars(number_format($goal['current_amount'], 2)); ?></p>
+                                <p class="goal-progress">Deadline: <?= htmlspecialchars(date('Y-m-d', strtotime("+{$goal['timeframe']} months"))); ?></p>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar progress-bar-custom" role="progressbar" style="width: <?= $progress; ?>%;" aria-valuenow="<?= $progress; ?>" aria-valuemin="0" aria-valuemax="100">
+                                        <?= number_format($progress, 2); ?>%
+                                    </div>
+                                </div>
+                                
+                                <!-- Edit Goal Button -->
+                                <button class="btn btn-custom" data-bs-toggle="modal" data-bs-target="#editGoalModal<?= htmlspecialchars($goal['id']); ?>">Edit Goal</button>
+                                
+                                <!-- Edit Goal Modal -->
+                                <div class="modal fade" id="editGoalModal<?= htmlspecialchars($goal['id']); ?>" tabindex="-1" aria-labelledby="editGoalModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editGoalModalLabel">Edit Goal: <?= htmlspecialchars($goal['goal_name']); ?></h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <form method="post">
+                                                    <input type="hidden" name="goalId" value="<?= htmlspecialchars($goal['id']); ?>">
+                                                    <div class="mb-3">
+                                                        <label for="goalTarget" class="form-label">Target Amount:</label>
+                                                        <input type="number" id="goalTarget" name="goalTarget" class="form-control" value="<?= htmlspecialchars($goal['target_amount']); ?>" required>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="goalDeadline" class="form-label">Deadline:</label>
+                                                        <input type="date" id="goalDeadline" name="goalDeadline" class="form-control" value="<?= htmlspecialchars(date('Y-m-d', strtotime("+{$goal['timeframe']} months"))); ?>" required>
+                                                    </div>
+                                                    <button type="submit" name="edit_goal" class="btn btn-custom">Save Changes</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Delete Goal Button -->
+                                <form method="post" style="display:inline;">
+                                    <input type="hidden" name="goalId" value="<?= htmlspecialchars($goal['id']); ?>">
+                                    <button type="submit" name="delete_goal" class="btn btn-danger">Delete Goal</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <!-- Advanced Goal Analysis Section -->
+        <section class="advanced-goal-analysis mb-5">
+            <h2>Advanced Goal Analysis</h2>
+            <p>Analyze your goals with advanced algorithms to optimize your savings strategy.</p>
+            <form method="post">
+                <div class="mb-3">
+                    <label for="goalSelect" class="form-label">Select Goal for Analysis:</label>
+                    <select id="goalSelect" name="goalSelect" class="form-select">
+                        <?php foreach ($goals as $goal) : ?>
+                            <option value="<?= htmlspecialchars($goal['goal_name']); ?>"><?= htmlspecialchars($goal['goal_name']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <button type="submit" name="analyze_goal" class="btn btn-custom">Analyze</button>
+            </form>
+
+            <?php if ($analysisResult) : ?>
+                <div class="alert alert-success mt-3" role="alert">
+                    <?= $analysisResult; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+    </div>
+    </main>
+   <!-- Footer -->
+<!-- Footer -->
+<footer style="
+    background: linear-gradient(135deg, #004d00 50%, #002600 50%); /* Dual-shade background */
+    color: #ffffff;
+    padding: 10px 0;
+    margin-top: 40px;
+">
+    <div class="container text-center">
+        <div style="
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-wrap: wrap;
+        ">
+            <!-- About the Project Section -->
+            <div style="
+                max-width: 400px; 
+                margin-bottom: 20px;
+            ">
+                <h4>About the Project</h4>
+                <p style="color: #ffffff;">This project, FinTrack, is developed as part of the final year MCA program at Manipal University Jaipur by Sourav Sharma.</p>
+                <p style="color: #ffffff;">Roll Number: 2214505923, Batch 4 MCA</p>
+            </div>
+            
+            <!-- Developer Contact Section with QR Code -->
+            <div style="
+                text-align: center; 
+                margin-bottom: 20px;
+            ">
+                <h4>Contact the Developer</h4>
+                <img src="images/QR_Sourav.png" alt="Developer QR Code" style="
+                    width: 120px; 
+                    height: 120px;
+                ">
+            </div>
+            
+            <!-- University Logo Section -->
+            <div style="
+                text-align: right; 
+                max-width: 400px; 
+                margin-bottom: 20px; 
+                background-color: #ffffff; /* White background for logo section */
+                padding: 10px; 
+                border-radius: 8px;
+            ">
+                <img src="images/Muj Logo.png" alt="Manipal University Jaipur Logo" class="footer-img" style="
+                    width: 100%; /* Ensure the logo fits within the div */
+                ">
             </div>
         </div>
+        
+        <!-- Horizontal Divider -->
+        <hr style="
+            border-top: 1px solid #d4edda;
+        ">
+        
+        <!-- Footer Copyright -->
+        <p style="color: #ffffff;">&copy; 2024 FinTrack. All Rights Reserved.</p>
     </div>
+</footer>
 
-    <!-- Progress Overview -->
-    <div class="container mt-4 progress-overview">
-        <h3>Progress Overview</h3>
-        <canvas id="goalsChart" width="400" height="200"></canvas>
-    </div>
 
-    <!-- Modals for Adding, Editing, and Deleting Goals -->
-    
-    <!-- Add Goal Modal -->
-    <div class="modal fade" id="addGoalModal" tabindex="-1" aria-labelledby="addGoalModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addGoalModalLabel">Add New Goal</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="mb-3">
-                            <label for="goalTitle" class="form-label">Goal Title</label>
-                            <input type="text" class="form-control" id="goalTitle">
-                        </div>
-                        <div class="mb-3">
-                            <label for="goalAmount" class="form-label">Target Amount</label>
-                            <input type="number" class="form-control" id="goalAmount">
-                        </div>
-                        <div class="mb-3">
-                            <label for="goalDeadline" class="form-label">Deadline</label>
-                            <input type="date" class="form-control" id="goalDeadline">
-                        </div>
-                        <div class="mb-3">
-                            <label for="goalCategory" class="form-label">Category</label>
-                            <select class="form-control" id="goalCategory">
-                                <option value="financial">Financial</option>
-                                <option value="health">Health</option>
-                                <option value="personal_development">Personal Development</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Save Goal</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Goal Modal -->
-    <div class="modal fade" id="editGoalModal" tabindex="-1" aria-labelledby="editGoalModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editGoalModalLabel">Edit Goal</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="mb-3">
-                            <label for="editGoalTitle" class="form-label">Goal Title</label>
-                            <input type="text" class="form-control" id="editGoalTitle" value="Emergency Fund">
-                        </div>
-                        <div class="mb-3">
-                            <label for="editGoalAmount" class="form-label">Target Amount</label>
-                            <input type="number" class="form-control" id="editGoalAmount" value="5000">
-                        </div>
-                        <div class="mb-3">
-                            <label for="editGoalDeadline" class="form-label">Deadline</label>
-                            <input type="date" class="form-control" id="editGoalDeadline" value="2024-12-31">
-                        </div>
-                        <div class="mb-3">
-                            <label for="editGoalCategory" class="form-label">Category</label>
-                            <select class="form-control" id="editGoalCategory">
-                                <option value="financial">Financial</option>
-                                <option value="health">Health</option>
-                                <option value="personal_development">Personal Development</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Delete Goal Modal -->
-    <div class="modal fade" id="deleteGoalModal" tabindex="-1" aria-labelledby="deleteGoalModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteGoalModalLabel">Delete Goal</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to delete this goal?</p>
-                    <button type="button" class="btn btn-danger">Delete</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-</div> <!-- End of container -->
-
-    <!-- Footer -->
-    <footer style="background-color: #004d00; color: #ffffff; padding: 20px 0; margin-top: 40px;">
-        <div class="container text-center">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                <div style="max-width: 400px; margin-bottom: 20px;">
-                    <h4>About the Project</h4>
-                    <p>This project, FinTrack, is developed as part of the final year MCA program at Manipal University Jaipur by Sourav Sharma.</p>
-                    <p>Roll Number: 2214505923, Batch 4 MCA</p>
-                </div>
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <h4>Contact the Developer</h4>
-                    <img src="images/QR_Sourav.png" alt="Developer QR Code" style="width: 120px; height: 120px;">
-                </div>
-                <div style="text-align: right; max-width: 400px; margin-bottom: 20px; background-color: #ffffff; padding: 10px; border-radius: 8px;">
-                    <img src="images/Muj Logo.png" alt="Manipal University Jaipur Logo" class="footer-img">
-                </div>
-            </div>
-            <hr style="border-top: 1px solid #d4edda;">
-            <p>&copy; 2024 FinTrack. All Rights Reserved.</p>
-        </div>
-    </footer>
-
-<!-- Optional JavaScript; choose one of the two! -->
-<!-- Option 1: Bootstrap Bundle with Popper -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- Chart.js for Goals Progress Overview -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    // Example chart script
-    var ctx = document.getElementById('goalsChart').getContext('2d');
-    var goalsChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Achieved', 'Pending'],
-            datasets: [{
-                label: '# of Goals',
-                data: [3, 5],
-                backgroundColor: ['#228B22', '#006400']
-            }]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-
-    // Example script to mark a goal as achieved
-    function markAsAchieved(button) {
-        button.textContent = 'Achieved';
-        button.classList.remove('btn-success');
-        button.classList.add('btn-secondary');
-    }
-</script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
 </body>
 </html>

@@ -112,76 +112,82 @@
             <img src="images/FinTrack.png" width="400px">
                 <h1>Sign In to FinTrack</h1>
             </div>
-            <form action="dashboard.html" method="POST">
+            <form action="backend/login.php" method="POST">
                 <div class="mb-3">
-                    <input type="email" class="form-control" placeholder="Email" required>
+                    <input type="email" class="form-control" name="email" placeholder="Email" required>
                 </div>
                 <div class="mb-3">
-                    <input type="password" class="form-control" placeholder="Password" required>
+                    <input type="password" class="form-control" name="password" placeholder="Password" required>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">Sign In</button>
-            </form>
+                <button type="submit" class="btn btn-primary w-100">Sign In</button>
+                </form>
             <p class="mt-3 text-center">or sign in with</p>
             <button class="btn btn-outline-primary btn-social">Sign in with Google</button>
             <button class="btn btn-outline-primary btn-social">Sign in with Facebook</button>
         </div>
 
-        <!-- Signup Form -->
-        <div class="signup-container">
-            <div class="form-header">
-                <h2>Create Your FinTrack Account</h2>
-            </div>
-            <form action="dashboard.php" method="POST">
-                <!-- User Details -->
-                <div class="mb-3">
-                    <input type="text" class="form-control" placeholder="Full Name" required>
-                </div>
-                <div class="mb-3">
-                    <input type="email" class="form-control" placeholder="Email" required>
-                </div>
-                <div class="mb-3">
-                    <input type="password" class="form-control" placeholder="Password" required>
-                </div>
-                <div class="mb-3">
-                    <input type="password" class="form-control" placeholder="Confirm Password" required>
-                </div>
-
-                <!-- Financial Information -->
-                <div class="mb-3">
-                    <label for="income" class="form-label">Monthly Income</label>
-                    <input type="number" class="form-control" id="income" placeholder="Enter your monthly income" required>
-                </div>
-                <div class="mb-3">
-                    <label for="savings" class="form-label">Current Savings</label>
-                    <input type="number" class="form-control" id="savings" placeholder="Enter your current savings" required>
-                </div>
-
-                <!-- Financial Goals -->
-                <div class="mb-3">
-                    <label for="goal" class="form-label">Financial Goal</label>
-                    <input type="text" class="form-control" id="goal" placeholder="Enter your financial goal" required>
-                </div>
-                <div class="mb-3">
-                    <label for="timeframe" class="form-label">Timeframe for Goal</label>
-                    <input type="number" class="form-control" id="timeframe" placeholder="Enter timeframe in months" required>
-                </div>
-
-                <!-- Transaction Categories -->
-                <div class="mb-3">
-                    <label for="categories" class="form-label">Default Transaction Categories</label>
-                    <select multiple class="form-control" id="categories" required>
-                        <option>Rent</option>
-                        <option>Utilities</option>
-                        <option>Groceries</option>
-                        <option>Entertainment</option>
-                        <option>Transportation</option>
-                        <option>Others</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-block">Sign Up</button>
-            </form>
+      <!-- Signup Form -->
+<!-- Signup Form -->
+<div class="signup-container">
+    <div class="form-header">
+        <h2>Create Your FinTrack Account</h2>
+        <p>Get started on managing your finances effectively.</p>
+    </div>
+    <form action="backend/register.php" method="POST">
+        <!-- User Details -->
+        <div class="mb-3">
+            <input type="text" class="form-control" name="full_name" placeholder="Full Name" required>
         </div>
+        <div class="mb-3">
+            <input type="email" class="form-control" name="email" placeholder="Email" required>
+        </div>
+        <div class="mb-3">
+            <input type="password" class="form-control" name="password" placeholder="Password" required minlength="8">
+            <small class="form-text text-muted">Password must be at least 8 characters long.</small>
+        </div>
+        <div class="mb-3">
+            <input type="password" class="form-control" name="confirm_password" placeholder="Confirm Password" required>
+        </div>
+
+        <!-- Financial Information -->
+        <div class="mb-3">
+            <label for="monthly_income" class="form-label">Monthly Income</label>
+            <input type="number" class="form-control" name="monthly_income" id="monthly_income" placeholder="Enter your monthly income" required min="0">
+        </div>
+        <div class="mb-3">
+            <label for="current_savings" class="form-label">Current Savings</label>
+            <input type="number" class="form-control" name="current_savings" id="current_savings" placeholder="Enter your current savings" required min="0">
+        </div>
+        <div class="mb-3">
+            <label for="loan_amount" class="form-label">Loan Amount</label>
+            <input type="number" class="form-control" name="loan_amount" id="loan_amount" placeholder="Enter your current loan amount" min="0">
+        </div>
+
+        <!-- Additional Information -->
+        <div class="mb-3">
+            <label for="age" class="form-label">Age</label>
+            <input type="number" class="form-control" name="age" id="age" placeholder="Enter your age" required min="0">
+        </div>
+        <div class="mb-3">
+            <label for="retirement_age" class="form-label">Retirement Age</label>
+            <input type="number" class="form-control" name="retirement_age" id="retirement_age" placeholder="Enter your planned retirement age" required min="0">
+        </div>
+        <div class="mb-3">
+            <label for="profession" class="form-label">Profession</label>
+            <input type="text" class="form-control" name="profession" id="profession" placeholder="Enter your profession" required>
+        </div>
+
+        <!-- Terms and Conditions -->
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="terms" required>
+            <label class="form-check-label" for="terms">I agree to the <a href="privacy_policy.php">Terms and Conditions</a></label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Sign Up</button>
+    </form>
+</div>
+
+
     </div>
 
      <!-- Footer -->

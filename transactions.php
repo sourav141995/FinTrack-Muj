@@ -1,3 +1,103 @@
+<?php
+session_start();
+
+// Redirect to login page if user is not logged in
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login_signup.php');
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+// Database connection
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "fintrack";
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Handle form submissions for creating, updating, and deleting transactions
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['create_transaction'])) {
+        $date = $_POST['transaction_date'];
+        $category_id = $_POST['category'];
+        $amount = $_POST['amount'];
+        $description = $_POST['description'];
+
+        $stmt = $conn->prepare("INSERT INTO transactions (user_id, category_id, transaction_date, amount, description) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("iissd", $user_id, $category_id, $date, $amount, $description);
+
+        if ($stmt->execute()) {
+            echo '<script>alert("Transaction added successfully!");</script>';
+        } else {
+            echo '<script>alert("Error: ' . $stmt->error . '");</script>';
+        }
+        $stmt->close();
+    } elseif (isset($_POST['update_transaction'])) {
+        $id = $_POST['transaction_id'];
+        $date = $_POST['transaction_date'];
+        $category_id = $_POST['category'];
+        $amount = $_POST['amount'];
+        $description = $_POST['description'];
+
+        $stmt = $conn->prepare("UPDATE transactions SET transaction_date = ?, category_id = ?, amount = ?, description = ? WHERE id = ?");
+        $stmt->bind_param("sissd", $date, $category_id, $amount, $description, $id);
+
+        if ($stmt->execute()) {
+            echo '<script>alert("Transaction updated successfully!");</script>';
+        } else {
+            echo '<script>alert("Error: ' . $stmt->error . '");</script>';
+        }
+        $stmt->close();
+    } elseif (isset($_POST['delete_transaction'])) {
+        $id = $_POST['transaction_id'];
+
+        $stmt = $conn->prepare("DELETE FROM transactions WHERE id = ?");
+        $stmt->bind_param("i", $id);
+
+        if ($stmt->execute()) {
+            echo '<script>alert("Transaction deleted successfully!");</script>';
+        } else {
+            echo '<script>alert("Error: ' . $stmt->error . '");</script>';
+        }
+        $stmt->close();
+    }
+}
+
+// Retrieve user transactions
+$transactions_sql = "SELECT t.id, t.transaction_date, c.category_name, t.amount, t.description 
+                     FROM transactions t
+                     JOIN categories c ON t.category_id = c.id
+                     WHERE t.user_id = ?";
+$stmt = $conn->prepare($transactions_sql);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$transactions_result = $stmt->get_result();
+
+// Retrieve categories for dropdown
+$categories_sql = "SELECT id, category_name FROM categories";
+$categories_result = $conn->query($categories_sql);
+
+// Retrieve user data
+$user_sql = "SELECT monthly_income, current_savings FROM users WHERE id = ?";
+$stmt = $conn->prepare($user_sql);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$user_result = $stmt->get_result();
+$user_data = $user_result->fetch_assoc();
+
+$monthly_income = $user_data['monthly_income'];
+$current_savings = $user_data['current_savings'];
+
+$stmt->close();
+$conn->close();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,317 +106,435 @@
     <title>Transactions - FinTrack</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
     <style>
-       /* Internal CSS for Transactions page */
+    /* Main content styling */
+    main {
+        font-family: 'Arial', sans-serif;
+        padding: 40px;
+        background-color: #f8f9fa;
+        color: #333;
+    }
 
-       /* Navigation Bar Design Start */
-       .navbar {
-           background-color: #004d40; /* Dark green background */
-           padding: 1rem;
-           transition: background-color 0.3s;
-           position: fixed; /* Fixed position */
-           top: 0;
-           width: 100%;
-           z-index: 1000; /* Ensure it is on top */
-       }
+    /* Chatbot iframe styling */
+    iframe {
+        border: none;
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        width: 300px;
+        height: 400px;
+        z-index: 1000;
+        border-radius: 10px;
+    }
 
-       .navbar:hover {
-           background-color: #00332d; /* Darker green on hover */
-       }
+    /* Container styling */
+    .containerr {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
 
-       .navbar-brand {
-           font-size: 1.5rem;
-           color: #fff;
-           display: flex;
-           align-items: center;
-       }
+    /* Heading styling */
+    h1 {
+        font-size: 2.5em;
+        color: #2d572c;
+        margin-bottom: 20px;
+    }
 
-       .navbar-brand img {
-           width: 40px;
-           margin-right: 10px;
-       }
+    /* Button styling */
+    .btn-primary {
+        background-color: #2d572c;
+        border: none;
+        color: #fff;
+        padding: 10px 20px;
+        font-size: 1em;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+    }
 
-       .navbar a {
-           color: #fff;
-           margin-left: 1rem;
-           transition: color 0.3s;
-       }
+    .btn-primary:hover {
+        background-color: #1a3e1d;
+    }
 
-       .navbar a:hover,
-       .navbar a.active {
-           color: #aed581; /* Light green for active or hover */
-       }
+    .btn-secondary {
+        background-color: #6c757d;
+        border: none;
+        color: #fff;
+        padding: 10px 20px;
+        font-size: 1em;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+    }
 
-       .navbar .form-inline {
-           display: flex;
-           justify-content: center;
-           flex-grow: 1;
-       }
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
 
-       .navbar .form-inline .form-control {
-           width: 200px;
-           transition: width 0.3s ease-in-out;
-       }
+    /* Modal styling */
+    .modal-content {
+        border-radius: 10px;
+    }
 
-       .navbar .form-inline .form-control:focus {
-           width: 300px;
-       }
+    .modal-header {
+        background-color: #2d572c;
+        color: #fff;
+        border-bottom: 2px solid #1a3e1d;
+    }
 
-       .navbar .btn-outline-light {
-           color: #fff;
-           border-color: #fff;
-           margin-left: 8px;
-       }
+    .modal-header .close {
+        color: #fff;
+    }
 
-       .navbar .btn-outline-light:hover {
-           color: #004d40;
-           background-color: #aed581;
-           border-color: #aed581;
-       }
+    .modal-body {
+        padding: 20px;
+    }
 
-       /* Navigation Bar Link Styles */
-       .navbar-nav .nav-link {
-           color: #fff;
-           margin-left: 1rem;
-           transition: color 0.3s;
-       }
+    /* Table styling */
+    .table {
+        width: 100%;
+        margin-bottom: 1rem;
+        color: #333;
+    }
 
-       .navbar-nav .nav-link:hover,
-       .navbar-nav .nav-link.active {
-           color: #aed581; /* Light green for active or hover */
-       }
-       /* Navigation Bar Design End */
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: #f2f2f2;
+    }
 
-       /* Button Styles */
-       .btn-primary {
-           background-color: #27ae60; /* Green color for primary buttons */
-           border-color: #27ae60;
-       }
+    .table thead th {
+        background-color: #2d572c;
+        color: #fff;
+        text-align: center;
+    }
 
-       .btn-primary:hover {
-           background-color: #2ecc71;
-           border-color: #2ecc71;
-       }
+    .table tbody td {
+        text-align: center;
+    }
 
-       .btn-secondary {
-           background-color: #ecf0f1; /* Light color for secondary buttons */
-           border-color: #bdc3c7;
-       }
+    /* Form styling */
+    .form-group {
+        margin-bottom: 1rem;
+    }
 
-       .btn-secondary:hover {
-           background-color: #bdc3c7;
-           border-color: #aab7b8;
-       }
+    .form-control {
+        border: 2px solid #2d572c;
+        border-radius: 5px;
+        padding: 10px;
+        font-size: 1em;
+    }
 
-       /* Table Styles */
-       .table {
-           background-color: #fff; /* White background for table */
-       }
+    .form-control:focus {
+        border-color: #1a3e1d;
+        box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
+    }
 
-       .table-striped tbody tr:nth-of-type(odd) {
-           background-color: #f9f9f9; /* Light grey for striped rows */
-       }
+    /* Alert box styling */
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 2px solid #c3e6cb;
+        border-radius: 5px;
+        padding: 15px;
+    }
+</style>
 
-       /* Footer Design Start */
-       footer {
-           background-color: #004d40;
-           color: #fff;
-           padding: 1rem;
-           text-align: center;
-           margin-top: 2rem;
-       }
 
-       .footer-links a {
-           color: #aed581;
-           margin: 0 0.5rem;
-           text-decoration: none;
-       }
-
-       .footer-links a:hover {
-           text-decoration: underline;
-       }
-       /* Footer Design End */
-
-       /* Additional Content Styles */
-       .header-btn {
-           margin-left: 10px;
-       }
-
-       /* Content Padding to account for fixed navbar */
-       body {
-           padding-top: 70px; /* Adjust based on navbar height */
-       }
-    </style>
 </head>
 <body>
 <!-- Navigation Bar -->
-<nav class="navbar navbar-expand-lg navbar-dark">
-    <a class="navbar-brand" href="index.php">
-        <img src="images/FinTrack.png" alt="FinTrack Logo"> FinTrack
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark" style="
+    background: linear-gradient(135deg, #004d00 50%, #002600 50%); /* Dual-shade background */
+    padding: 1rem;
+    margin-bottom: 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+">
+    <!-- Navbar Brand -->
+    <a class="navbar-brand" href="index.php" style="
+        font-size: 1.5rem;
+        color: #fff;
+        display: flex;
+        align-items: center;
+    ">
+        <img src="images/FinTrack.png" alt="FinTrack Logo" style="
+            width: 40px;
+            margin-right: 10px;
+        "> 
+        FinTrack
     </a>
+    
+    <!-- Navbar Toggler -->
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
+    
+    <!-- Navbar Links -->
     <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav me-auto">
-            <!-- Left side links -->
-            <li class="nav-item">
-                <a class="nav-link" href="dashboard.php">Dashboard</a>
+        <ul class="navbar-nav mx-auto" style="
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center align the nav items */
+            flex-grow: 1; /* Allow navbar items to grow */
+        ">
+            <li class="nav-item" style="margin-left: 1rem;">
+                <a class="nav-link active" href="dashboard.php" style="
+                    color: #fff;
+                    transition: color 0.3s, transform 0.3s;
+                ">Dashboard</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="goals.php">Goals</a>
+            <li class="nav-item" style="margin-left: 1rem;">
+                <a class="nav-link" href="goals.php" style="
+                    color: #fff;
+                    transition: color 0.3s, transform 0.3s;
+                ">Goals</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link active" href="transactions.php">Transactions</a>
+            <li class="nav-item" style="margin-left: 1rem;">
+                <a class="nav-link" href="transactions.php" style="
+                    color: #fff;
+                    transition: color 0.3s, transform 0.3s;
+                ">Transactions</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="reports.php">Reports</a>
+            <li class="nav-item" style="margin-left: 1rem;">
+                <a class="nav-link" href="reports.php" style="
+                    color: #fff;
+                    transition: color 0.3s, transform 0.3s;
+                ">Reports</a>
             </li>
         </ul>
-        <form class="d-flex mx-auto">
-            <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
-            <button class="btn btn-outline-light" type="submit">Search</button>
-        </form>
-        <ul class="navbar-nav ms-auto">
-            <!-- Right side links -->
+        <div>
+        <!-- Logout Button aligned to the right -->
+        <ul class="navbar-nav" style="margin-left: auto;">
             <li class="nav-item">
-                <a class="nav-link" href="index.php">Home</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="help_support.php">Help Center</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="login_signup.php">Login</a>
+                <form action="logout.php" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-outline-light" style="
+                        color: #fff;
+                        border-color: #fff;
+                        transition: background-color 0.3s, color 0.3s;
+                    ">Logout</button>
+                </form>
             </li>
         </ul>
+        </div>
     </div>
 </nav>
 
-<!-- Feedback Modal -->
-<iframe src="chatbot.html" style="border:none; position:fixed; bottom:0; right:0; width:300px; height:400px; z-index:1000;"></iframe>
+
+<main>
+    <iframe src="chatbot.html" style="border:none; position:fixed; bottom:0; right:0; width:300px; height:400px; z-index:1000;"></iframe>
 
 
-<!-- Header -->
-<header class="d-flex justify-content-between align-items-center mt-4">
-    <h1 class="ml-3">Transactions</h1>
-    <div>
-        <button class="btn btn-primary mr-3 header-btn" onclick="openAddTransactionForm()">Add Transaction</button>
-        <button class="btn btn-secondary" onclick="openExportOptions()">Export Data</button>
-    </div>
-</header>
+<div class="containerr mt-5">
+    <h1 class="mb-4">Transactions</h1>
+    <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#addTransactionModal">Add Transaction</button>
+    <button class="btn btn-secondary mb-3" data-toggle="modal" data-target="#updateTransactionModal">Update Transaction</button>
+    <button class="btn btn-secondary mb-3" data-toggle="modal" data-target="#deleteTransactionModal">Delete Transaction</button>
 
-<!-- Transaction Summary and Statistics -->
-<div class="container mt-4">
-    <h2>Transaction Summary</h2>
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card text-white bg-success mb-3">
-                <div class="card-header">Total Income</div>
-                <div class="card-body">
-                    <h5 class="card-title">$5000.00</h5>
+    <!-- Add Transaction Modal -->
+    <div class="modal fade" id="addTransactionModal" tabindex="-1" role="dialog" aria-labelledby="addTransactionModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addTransactionModalLabel">Add Transaction</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="transactions.php">
+                        <div class="form-group">
+                            <label for="transaction_date">Date</label>
+                            <input type="date" class="form-control" id="transaction_date" name="transaction_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="category">Category</label>
+                            <select class="form-control" id="category" name="category" required>
+                                <?php while ($row = $categories_result->fetch_assoc()): ?>
+                                    <option value="<?= $row['id'] ?>"><?= $row['category_name'] ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="amount">Amount</label>
+                            <input type="number" step="0.01" class="form-control" id="amount" name="amount" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea class="form-control" id="description" name="description"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" name="create_transaction">Add Transaction</button>
+                    </form>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card text-white bg-danger mb-3">
-                <div class="card-header">Total Expenses</div>
-                <div class="card-body">
-                    <h5 class="card-title">$3000.00</h5>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card text-white bg-info mb-3">
-                <div class="card-header">Net Balance</div>
-                <div class="card-body">
-                    <h5 class="card-title">$2000.00</h5>
-                </div>
-            </div>
-        </div>
     </div>
-</div>
 
-<!-- Transaction List -->
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <input type="text" class="form-control w-25" id="filterSearch" placeholder="Search Transactions">
-        <button class="btn btn-primary" onclick="openFilterForm()">Filter Transactions</button>
+    <!-- Update Transaction Modal -->
+    <div class="modal fade" id="updateTransactionModal" tabindex="-1" role="dialog" aria-labelledby="updateTransactionModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updateTransactionModalLabel">Update Transaction</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="transactions.php">
+                        <div class="form-group">
+                            <label for="transaction_id">Transaction ID</label>
+                            <input type="number" class="form-control" id="transaction_id" name="transaction_id" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="transaction_date">Date</label>
+                            <input type="date" class="form-control" id="transaction_date" name="transaction_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="category">Category</label>
+                            <select class="form-control" id="category" name="category" required>
+                                <?php while ($row = $categories_result->fetch_assoc()): ?>
+                                    <option value="<?= $row['id'] ?>"><?= $row['category_name'] ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="amount">Amount</label>
+                            <input type="number" step="0.01" class="form-control" id="amount" name="amount" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea class="form-control" id="description" name="description"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" name="update_transaction">Update Transaction</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-    <table id="transactionTable" class="display table table-striped table-bordered" style="width:100%">
+
+    <!-- Delete Transaction Modal -->
+    <div class="modal fade" id="deleteTransactionModal" tabindex="-1" role="dialog" aria-labelledby="deleteTransactionModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteTransactionModalLabel">Delete Transaction</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="transactions.php">
+                        <div class="form-group">
+                            <label for="transaction_id">Transaction ID</label>
+                            <input type="number" class="form-control" id="transaction_id" name="transaction_id" required>
+                        </div>
+                        <button type="submit" class="btn btn-danger" name="delete_transaction">Delete Transaction</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <table id="transactionsTable" class="table table-striped">
         <thead>
             <tr>
+                <th>ID</th>
                 <th>Date</th>
-                <th>Description</th>
                 <th>Category</th>
                 <th>Amount</th>
-                <th>Actions</th>
+                <th>Description</th>
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td>2024-08-25</td>
-                <td>Groceries</td>
-                <td>Food</td>
-                <td>$150.00</td>
-                <td><button class="btn btn-info btn-sm" onclick="openEditTransactionForm()">Edit</button> <button class="btn btn-danger btn-sm" onclick="confirmDeleteTransaction()">Delete</button></td>
-            </tr>
-            <!-- More transaction rows go here -->
+            <?php while ($row = $transactions_result->fetch_assoc()): ?>
+                <tr>
+                    <td><?= $row['id'] ?></td>
+                    <td><?= $row['transaction_date'] ?></td>
+                    <td><?= $row['category_name'] ?></td>
+                    <td><?= $row['amount'] ?></td>
+                    <td><?= $row['description'] ?></td>
+                </tr>
+            <?php endwhile; ?>
         </tbody>
     </table>
 </div>
 
-    <!-- Footer -->
-    <footer style="background-color: #004d00; color: #ffffff; padding: 20px 0; margin-top: 40px;">
-        <div class="container text-center">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                <div style="max-width: 400px; margin-bottom: 20px;">
-                    <h4>About the Project</h4>
-                    <p>This project, FinTrack, is developed as part of the final year MCA program at Manipal University Jaipur by Sourav Sharma.</p>
-                    <p>Roll Number: 2214505923, Batch 4 MCA</p>
-                </div>
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <h4>Contact the Developer</h4>
-                    <img src="images/QR_Sourav.png" alt="Developer QR Code" style="width: 120px; height: 120px;">
-                </div>
-                <div style="text-align: right; max-width: 400px; margin-bottom: 20px; background-color: #ffffff; padding: 10px; border-radius: 8px;">
-                    <img src="images/Muj Logo.png" alt="Manipal University Jaipur Logo" class="footer-img">
-                </div>
+</main>
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer style="
+    background: linear-gradient(135deg, #004d00 50%, #002600 50%); /* Dual-shade background */
+    color: #ffffff;
+    padding: 10px 0;
+    margin-top: 40px;
+">
+    <div class="container text-center">
+        <div style="
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-wrap: wrap;
+        ">
+            <!-- About the Project Section -->
+            <div style="
+                max-width: 400px; 
+                margin-bottom: 20px;
+            ">
+                <h4>About the Project</h4>
+                <p style="color: #ffffff;">This project, FinTrack, is developed as part of the final year MCA program at Manipal University Jaipur by Sourav Sharma.</p>
+                <p style="color: #ffffff;">Roll Number: 2214505923, Batch 4 MCA</p>
             </div>
-            <hr style="border-top: 1px solid #d4edda;">
-            <p>&copy; 2024 FinTrack. All Rights Reserved.</p>
+            
+            <!-- Developer Contact Section with QR Code -->
+            <div style="
+                text-align: center; 
+                margin-bottom: 20px;
+            ">
+                <h4>Contact the Developer</h4>
+                <img src="images/QR_Sourav.png" alt="Developer QR Code" style="
+                    width: 120px; 
+                    height: 120px;
+                ">
+            </div>
+            
+            <!-- University Logo Section -->
+            <div style="
+                text-align: right; 
+                max-width: 400px; 
+                margin-bottom: 20px; 
+                background-color: #ffffff; /* White background for logo section */
+                padding: 10px; 
+                border-radius: 8px;
+            ">
+                <img src="images/Muj Logo.png" alt="Manipal University Jaipur Logo" class="footer-img" style="
+                    width: 100%; /* Ensure the logo fits within the div */
+                ">
+            </div>
         </div>
-    </footer>
+        
+        <!-- Horizontal Divider -->
+        <hr style="
+            border-top: 1px solid #d4edda;
+        ">
+        
+        <!-- Footer Copyright -->
+        <p style="color: #ffffff;">&copy; 2024 FinTrack. All Rights Reserved.</p>
+    </div>
+</footer>
+
 
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/momentjs/2.29.1/moment.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 <script>
     $(document).ready(function() {
-        $('#transactionTable').DataTable();
+        $('#transactionsTable').DataTable();
     });
-
-    function openAddTransactionForm() {
-        // Code to open Add Transaction form
-    }
-
-    function openExportOptions() {
-        // Code to open Export Data options
-    }
-
-    function openFilterForm() {
-        // Code to open Filter Transactions form
-    }
-
-    function openEditTransactionForm() {
-        // Code to open Edit Transaction form
-    }
-
-    function confirmDeleteTransaction() {
-        // Code to confirm deletion of a transaction
-    }
 </script>
 </body>
 </html>
