@@ -36,6 +36,7 @@ if ($report_result->num_rows > 0) {
 $report_stmt->close();
 $conn->close();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,18 +44,32 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reports Widget</title>
     <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+        }
         .report {
-            border: 1px solid #ddd;
+            border: 1px solid #dfe6e9;
             border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 10px;
-            background-color: #f9f9f9;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .report:hover {
+            transform: translateY(-5px);
         }
         .report-title {
-            font-weight: bold;
+            font-weight: 700;
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 10px;
         }
         .chart-container {
-            height: 200px;
+            height: 250px;
         }
     </style>
 </head>
@@ -65,6 +80,7 @@ $conn->close();
             <canvas id="expenseChart"></canvas>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const ctx = document.getElementById('expenseChart').getContext('2d');
@@ -79,8 +95,36 @@ $conn->close();
                 datasets: [{
                     label: 'Expenses',
                     data: data,
-                    backgroundColor: ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56']
+                    backgroundColor: [
+                        '#ff6384', 
+                        '#36a2eb', 
+                        '#cc65fe', 
+                        '#ffce56',
+                        '#2ecc71',
+                        '#e74c3c'
+                    ],
+                    borderColor: [
+                        '#ff6384', 
+                        '#36a2eb', 
+                        '#cc65fe', 
+                        '#ffce56',
+                        '#2ecc71',
+                        '#e74c3c'
+                    ],
+                    borderWidth: 1
                 }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
             }
         });
     </script>

@@ -4,51 +4,73 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login_signup.php");
     exit();
 }
+$current_page = basename($_SERVER['PHP_SELF']);
 
 require 'backend/db.php'; // Ensure this file includes database connection setup
 
 $user_id = $_SESSION['user_id'];
 
-// Handle adding a new goal
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_goal'])) {
-    $goalName = htmlspecialchars($_POST['goalName']);
-    $goalTarget = floatval($_POST['goalTarget']);
-    $goalDeadline = htmlspecialchars($_POST['goalDeadline']);
-    
-    $stmt = $pdo->prepare("INSERT INTO goals (user_id, goal_name, target_amount, timeframe) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$user_id, $goalName, $goalTarget, (strtotime($goalDeadline) - time()) / (60 * 60 * 24 * 30)]);
-}
+try {
+    // Add New Goal
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_goal'])) {
+        $goalName = htmlspecialchars($_POST['goalName']);
+        $goalTarget = floatval($_POST['goalTarget']);
+        $goalDeadline = htmlspecialchars($_POST['goalDeadline']);
+        
+        $timeframe = (strtotime($goalDeadline) - time()) / (60 * 60 * 24 * 30); // Calculate timeframe in months
 
-// Handle editing an existing goal
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_goal'])) {
-    $goalId = intval($_POST['goalId']);
-    $goalTarget = floatval($_POST['goalTarget']);
-    $goalDeadline = htmlspecialchars($_POST['goalDeadline']);
-    
-    $stmt = $pdo->prepare("UPDATE goals SET target_amount = ?, timeframe = ? WHERE id = ? AND user_id = ?");
-    $stmt->execute([$goalTarget, (strtotime($goalDeadline) - time()) / (60 * 60 * 24 * 30), $goalId, $user_id]);
-}
+        if ($timeframe < 0) {
+            echo "Deadline cannot be in the past.";
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO goals (user_id, goal_name, target_amount, timeframe) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$user_id, $goalName, $goalTarget, $timeframe]);
+        }
+    }
 
-// Handle deleting a goal
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_goal'])) {
-    $goalId = intval($_POST['goalId']);
-    
-    $stmt = $pdo->prepare("DELETE FROM goals WHERE id = ? AND user_id = ?");
-    $stmt->execute([$goalId, $user_id]);
-}
+    // Retrieve user goals along with current savings
+    $stmt = $pdo->prepare("
+        SELECT g.*, u.current_savings 
+        FROM goals g
+        JOIN users u ON g.user_id = u.id
+        WHERE g.user_id = ?
+    ");
+    $stmt->execute([$user_id]);
+    $goals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Retrieve user goals
-$stmt = $pdo->prepare("SELECT * FROM goals WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$goals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Handle editing an existing goal
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_goal'])) {
+        $goalId = intval($_POST['goalId']);
+        $goalTarget = floatval($_POST['goalTarget']);
+        $goalDeadline = htmlspecialchars($_POST['goalDeadline']);
+        
+        $timeframe = (strtotime($goalDeadline) - time()) / (60 * 60 * 24 * 30); // Calculate timeframe in months
 
-// Handle goal analysis
-$analysisResult = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['analyze_goal'])) {
-    $goalNameToAnalyze = htmlspecialchars($_POST['goalSelect']);
-    
-    // Perform analysis (replace this with actual analysis logic)
-    $analysisResult = "Analysis result for {$goalNameToAnalyze}: You are on track!";
+        if ($timeframe < 0) {
+            echo "Deadline cannot be in the past.";
+        } else {
+            $stmt = $pdo->prepare("UPDATE goals SET target_amount = ?, timeframe = ? WHERE id = ? AND user_id = ?");
+            $stmt->execute([$goalTarget, $timeframe, $goalId, $user_id]);
+        }
+    }
+
+    // Handle deleting a goal
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_goal'])) {
+        $goalId = intval($_POST['goalId']);
+        
+        $stmt = $pdo->prepare("DELETE FROM goals WHERE id = ? AND user_id = ?");
+        $stmt->execute([$goalId, $user_id]);
+    }
+
+    // Handle goal analysis
+    $analysisResult = '';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['analyze_goal'])) {
+        $goalNameToAnalyze = htmlspecialchars($_POST['goalSelect']);
+        
+        // Perform analysis (replace this with actual analysis logic)
+        $analysisResult = "Analysis result for {$goalNameToAnalyze}: You are on track!";
+    }
+} catch (PDOException $e) {
+    echo "Database error: " . $e->getMessage();
 }
 ?>
 <!DOCTYPE html>
@@ -186,6 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['analyze_goal'])) {
 <body>
 <!-- Navigation Bar -->
 <!-- Navbar -->
+<!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-dark" style="
     background: linear-gradient(135deg, #004d00 50%, #002600 50%); /* Dual-shade background */
     padding: 1rem;
@@ -224,43 +247,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['analyze_goal'])) {
             flex-grow: 1; /* Allow navbar items to grow */
         ">
             <li class="nav-item" style="margin-left: 1rem;">
-                <a class="nav-link active" href="dashboard.php" style="
+                <a class="nav-link <?php echo ($current_page == 'dashboard.php') ? 'active' : ''; ?>" href="dashboard.php" style="
                     color: #fff;
                     transition: color 0.3s, transform 0.3s;
-                ">Dashboard</a>
+                    padding: 10px 15px;
+                    border-radius: 20px;
+                    box-shadow: <?php echo ($current_page == 'dashboard.php') ? '0px 4px 15px rgba(0, 255, 0, 0.6)' : 'none'; ?>;
+                    background-color: <?php echo ($current_page == 'dashboard.php') ? 'rgba(0, 255, 0, 0.2)' : 'transparent'; ?>;
+                    font-weight: <?php echo ($current_page == 'dashboard.php') ? 'bold' : 'normal'; ?>;
+                " onmouseover="this.style.color='#00ff00';" onmouseout="this.style.color='#fff';">
+                    Dashboard
+                </a>
             </li>
             <li class="nav-item" style="margin-left: 1rem;">
-                <a class="nav-link" href="goals.php" style="
+                <a class="nav-link <?php echo ($current_page == 'goals.php') ? 'active' : ''; ?>" href="goals.php" style="
                     color: #fff;
                     transition: color 0.3s, transform 0.3s;
-                ">Goals</a>
+                    padding: 10px 15px;
+                    border-radius: 20px;
+                    box-shadow: <?php echo ($current_page == 'goals.php') ? '0px 4px 15px rgba(0, 255, 0, 0.6)' : 'none'; ?>;
+                    background-color: <?php echo ($current_page == 'goals.php') ? 'rgba(0, 255, 0, 0.2)' : 'transparent'; ?>;
+                    font-weight: <?php echo ($current_page == 'goals.php') ? 'bold' : 'normal'; ?>;
+                " onmouseover="this.style.color='#00ff00';" onmouseout="this.style.color='#fff';">
+                    Goals
+                </a>
             </li>
             <li class="nav-item" style="margin-left: 1rem;">
-                <a class="nav-link" href="transactions.php" style="
+                <a class="nav-link <?php echo ($current_page == 'transactions.php') ? 'active' : ''; ?>" href="transactions.php" style="
                     color: #fff;
                     transition: color 0.3s, transform 0.3s;
-                ">Transactions</a>
+                    padding: 10px 15px;
+                    border-radius: 20px;
+                    box-shadow: <?php echo ($current_page == 'transactions.php') ? '0px 4px 15px rgba(0, 255, 0, 0.6)' : 'none'; ?>;
+                    background-color: <?php echo ($current_page == 'transactions.php') ? 'rgba(0, 255, 0, 0.2)' : 'transparent'; ?>;
+                    font-weight: <?php echo ($current_page == 'transactions.php') ? 'bold' : 'normal'; ?>;
+                " onmouseover="this.style.color='#00ff00';" onmouseout="this.style.color='#fff';">
+                    Transactions
+                </a>
             </li>
             <li class="nav-item" style="margin-left: 1rem;">
-                <a class="nav-link" href="reports.php" style="
+                <a class="nav-link <?php echo ($current_page == 'reports.php') ? 'active' : ''; ?>" href="reports.php" style="
                     color: #fff;
                     transition: color 0.3s, transform 0.3s;
-                ">Reports</a>
+                    padding: 10px 15px;
+                    border-radius: 20px;
+                    box-shadow: <?php echo ($current_page == 'reports.php') ? '0px 4px 15px rgba(0, 255, 0, 0.6)' : 'none'; ?>;
+                    background-color: <?php echo ($current_page == 'reports.php') ? 'rgba(0, 255, 0, 0.2)' : 'transparent'; ?>;
+                    font-weight: <?php echo ($current_page == 'reports.php') ? 'bold' : 'normal'; ?>;
+                " onmouseover="this.style.color='#00ff00';" onmouseout="this.style.color='#fff';">
+                    Reports
+                </a>
             </li>
         </ul>
-        <div>
+        
         <!-- Logout Button aligned to the right -->
-        <ul class="navbar-nav" style="margin-left: auto;">
-            <li class="nav-item">
-                <form action="logout.php" method="post" class="d-inline">
-                    <button type="submit" class="btn btn-outline-light" style="
-                        color: #fff;
-                        border-color: #fff;
-                        transition: background-color 0.3s, color 0.3s;
-                    ">Logout</button>
-                </form>
-            </li>
-        </ul>
+        <div>
+            <ul class="navbar-nav" style="margin-left: auto;">
+                <li class="nav-item">
+                    <form action="logout.php" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light" style="
+                            color: #fff;
+                            border-color: #fff;
+                            transition: background-color 0.3s, color 0.3s;
+                        " onmouseover="this.style.backgroundColor='#00ff00'; this.style.color='#004d00';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#fff';">
+                            Logout
+                        </button>
+                    </form>
+                </li>
+            </ul>
         </div>
     </div>
 </nav>
@@ -295,66 +349,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['analyze_goal'])) {
             </form>
         </section>
 
-        <!-- Goals Section -->
-        <section class="goals-section mb-5">
-            <div class="row">
-                <?php foreach ($goals as $goal) : ?>
-                    <?php
-                    $progress = ($goal['current_amount'] / $goal['target_amount']) * 100;
-                    ?>
-                    <div class="col-md-4">
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <h5 class="card-title"><?= htmlspecialchars($goal['goal_name']); ?></h5>
-                                <p class="goal-progress">Target: $<?= htmlspecialchars(number_format($goal['target_amount'], 2)); ?></p>
-                                <p class="goal-progress">Current: $<?= htmlspecialchars(number_format($goal['current_amount'], 2)); ?></p>
-                                <p class="goal-progress">Deadline: <?= htmlspecialchars(date('Y-m-d', strtotime("+{$goal['timeframe']} months"))); ?></p>
-                                <div class="progress mb-3">
-                                    <div class="progress-bar progress-bar-custom" role="progressbar" style="width: <?= $progress; ?>%;" aria-valuenow="<?= $progress; ?>" aria-valuemin="0" aria-valuemax="100">
-                                        <?= number_format($progress, 2); ?>%
-                                    </div>
-                                </div>
-                                
-                                <!-- Edit Goal Button -->
-                                <button class="btn btn-custom" data-bs-toggle="modal" data-bs-target="#editGoalModal<?= htmlspecialchars($goal['id']); ?>">Edit Goal</button>
-                                
-                                <!-- Edit Goal Modal -->
-                                <div class="modal fade" id="editGoalModal<?= htmlspecialchars($goal['id']); ?>" tabindex="-1" aria-labelledby="editGoalModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="editGoalModalLabel">Edit Goal: <?= htmlspecialchars($goal['goal_name']); ?></h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <form method="post">
-                                                    <input type="hidden" name="goalId" value="<?= htmlspecialchars($goal['id']); ?>">
-                                                    <div class="mb-3">
-                                                        <label for="goalTarget" class="form-label">Target Amount:</label>
-                                                        <input type="number" id="goalTarget" name="goalTarget" class="form-control" value="<?= htmlspecialchars($goal['target_amount']); ?>" required>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="goalDeadline" class="form-label">Deadline:</label>
-                                                        <input type="date" id="goalDeadline" name="goalDeadline" class="form-control" value="<?= htmlspecialchars(date('Y-m-d', strtotime("+{$goal['timeframe']} months"))); ?>" required>
-                                                    </div>
-                                                    <button type="submit" name="edit_goal" class="btn btn-custom">Save Changes</button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Delete Goal Button -->
-                                <form method="post" style="display:inline;">
-                                    <input type="hidden" name="goalId" value="<?= htmlspecialchars($goal['id']); ?>">
-                                    <button type="submit" name="delete_goal" class="btn btn-danger">Delete Goal</button>
-                                </form>
+<!-- Goals Section -->
+<section class="goals-section mb-5">
+    <div class="row">
+        <?php foreach ($goals as $goal) : ?>
+            <?php
+            // Calculate progress
+            $progress = ($goal['current_amount'] / $goal['target_amount']) * 100;
+            ?>
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title"><?= htmlspecialchars($goal['goal_name']); ?></h5>
+                        <p class="goal-progress">Target: ₹<?= htmlspecialchars(number_format($goal['target_amount'], 2)); ?></p>
+                        <p class="goal-progress">Current Savings: ₹<?= htmlspecialchars(number_format($goal['current_savings'], 2)); ?></p>
+                        <p class="goal-progress">Deadline: <?= htmlspecialchars(date('Y-m-d', strtotime("+{$goal['timeframe']} months"))); ?></p>
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-custom" role="progressbar" style="width: <?= $progress; ?>%;" aria-valuenow="<?= $progress; ?>" aria-valuemin="0" aria-valuemax="100">
+                                <?= number_format($progress, 2); ?>%
                             </div>
                         </div>
+                        <!-- Edit and Delete Goal -->
+                        <form method="post" class="d-inline">
+                            <input type="hidden" name="goalId" value="<?= htmlspecialchars($goal['id']); ?>">
+                            <button type="submit" name="edit_goal" class="btn btn-warning">Edit</button>
+                            <button type="submit" name="delete_goal" class="btn btn-danger">Delete</button>
+                        </form>
                     </div>
-                <?php endforeach; ?>
+                </div>
             </div>
-        </section>
+        <?php endforeach; ?>
+    </div>
+</section>
 
         <!-- Advanced Goal Analysis Section -->
         <section class="advanced-goal-analysis mb-5">

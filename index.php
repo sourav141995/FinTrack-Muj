@@ -1,3 +1,7 @@
+<?php
+// Get the current file name, e.g., 'about_us.php'
+$current_page = basename($_SERVER['PHP_SELF']);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -110,26 +114,61 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="background-color: #004d00;">
-        <div class="container">
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="guest_info.html">Guest</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="about_us.php">About Us</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="login_signup.php">Register</a>
-                    </li>
-                </ul>
-            </div>
+
+<nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="
+    background: linear-gradient(135deg, #004d00 50%, #002600 50%);
+    padding: 1rem;
+    margin-bottom: 20px;
+    width: 100%;
+    z-index: 1000;
+">
+    <div class="container-fluid">
+        <!-- Navbar Brand with Logo aligned to the left -->
+        <a class="navbar-brand" href="index.php" style="
+            font-size: 1.5rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+        ">
+            <img src="images/FinTrack.png" alt="FinTrack Logo" style="
+                width: 40px;
+                margin-right: 10px;
+            "> 
+            FinTrack
+        </a>
+
+        <!-- Navbar Toggler -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- Navbar Links aligned to the right -->
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav" style="display: flex; align-items: center;">
+                <li class="nav-item" style="margin-left: 1rem;">
+                    <a class="nav-link" href="guest_info.php" style="
+                        color: #fff;
+                        transition: color 0.3s, transform 0.3s;
+                    ">Guest</a>
+                </li>
+                <li class="nav-item" style="margin-left: 1rem;">
+                    <a class="nav-link" href="about_us.php" style="
+                        color: #fff;
+                        transition: color 0.3s, transform 0.3s;
+                    ">About Us</a>
+                </li>
+                <li class="nav-item" style="margin-left: 1rem;">
+                    <a class="nav-link" href="login_signup.php" style="
+                        color: #fff;
+                        transition: color 0.3s, transform 0.3s;
+                    ">Register</a>
+                </li>
+            </ul>
         </div>
-    </nav>
+    </div>
+</nav>
+
+
 
     <iframe src="chatbot.html" style="border:none; position:fixed; bottom:0; right:0; width:300px; height:400px; z-index:1000;"></iframe>
 
@@ -166,7 +205,8 @@
                         </div>
                         <hr>
                         <div class="text-center">
-                            <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#loginModal">Get Started</button>
+                        <button type="button" class="btn btn-primary btn-lg" onclick="window.location.href='login_signup.php'">Get Started</button> <br>
+                        <button type="button" class="btn btn-outline-primary btn-lg mt-3" onclick="window.location.href='guest_info.php'">Explore More</button>
                         </div>
                     </div>
                 </div>
@@ -201,7 +241,7 @@
                 </div>
                 <div class="modal-body">
                     <!-- Login Form -->
-                    <form id="loginForm" style="color: black;">
+                    <form action="backend/login.php" method="POST" id="loginForm" style="color: black;">
                         <div class="mb-3">
                             <label for="email" class="form-label">Username or Email address</label>
                             <input type="email" class="form-control" id="email" required placeholder="Enter your Username or Email address">

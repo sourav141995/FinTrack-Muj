@@ -39,17 +39,60 @@ $transactions_result = $stmt->get_result();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transactions Widget</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+        }
+        h3 {
+            text-align: center;
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
+            padding: 12px;
             text-align: left;
         }
         th {
-            background-color: #f4f4f4;
+            background-color: #2c3e50;
+            color: #fff;
+        }
+        td {
+            border-bottom: 1px solid #ddd;
+        }
+        td:nth-child(1) {
+            color: #34495e;
+        }
+        td:nth-child(2) {
+            color: #16a085;
+        }
+        td:nth-child(3) {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        tr:hover {
+            background-color: #ecf0f1;
+        }
+        .view-all {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            color: #3498db;
+        }
+        .view-all:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -66,9 +109,9 @@ $transactions_result = $stmt->get_result();
         <tbody>
             <?php while ($row = $transactions_result->fetch_assoc()): ?>
                 <tr>
-                    <td><?= htmlspecialchars($row['transaction_date']) ?></td>
+                    <td><?= htmlspecialchars(date("d M Y", strtotime($row['transaction_date']))) ?></td>
                     <td><?= htmlspecialchars($row['description']) ?></td>
-                    <td>$<?= number_format($row['amount'], 2) ?></td>
+                    <td>₹<?= number_format($row['amount'], 2) ?></td>
                 </tr>
             <?php endwhile; ?>
         </tbody>

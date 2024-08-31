@@ -7,125 +7,87 @@ $current_page = basename($_SERVER['PHP_SELF']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinTrack - Login & Signup</title>
+    <title>FinTrack - Finance Insights</title>
+    
+    <!-- Include Bootstrap CSS for modern styling -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Include Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
     <style>
-   body, html {
-    height: 100%;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    background-color: #f8f9fa;
-}
-
-.main-container {
-    display: flex;
-    flex-grow: 1;
-    padding: 20px;
-    margin-top: 100px;
-    flex-wrap: wrap; /* Allows wrapping of items on smaller screens */
-}
-
-.login-container, .signup-container {
-    flex: 1;
-    padding: 40px;
-    background: #ffffff;
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    margin: 20px;
-    max-width: 500px; /* Added a max-width for better control on larger screens */
-    width: 100%;
-}
-
-/* Adjustments for mobile view */
-@media (max-width: 768px) {
-    .main-container {
-        flex-direction: column;
-        margin-top: 80px; /* Adjust margin-top for mobile view */
-    }
-
-    .login-container, .signup-container {
-        margin: 10px; /* Reduce margin on smaller screens */
-        padding: 20px; /* Adjust padding for mobile view */
-    }
-
-    .form-header h1, .form-header h2 {
-        font-size: 1.5em;
-    }
-
-    .form-header p {
-        font-size: 0.9em;
-    }
-
-    .form-control {
-        font-size: 14px;
-    }
-
-    .btn {
-        font-size: 14px;
-        padding: 10px; /* Adjust padding for buttons */
-    }
-}
-
-.form-header {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #004d00;
-}
-
-.form-header h1, .form-header h2 {
-    font-size: 28px;
-}
-
-.btn-social {
-    margin-top: 10px;
-    width: 100%;
-}
-
-.navbar {
-    background-color: #004d00; /* Match the dark green theme */
-}
-
-.navbar-brand {
-    display: flex;
-    align-items: center;
-}
-
-.navbar-brand img {
-    width: 40px; /* Adjust size as needed */
-    height: 40px;
-}
-
-.btn-primary {
-    background-color: #004d00;
-    border-color: #004d00;
-}
-
-.navbar-nav .nav-link:hover,
-.navbar-nav .nav-link.active {
-    color: #ffffff; /* Light green for active or hover */
-}
-
-.btn-primary:hover {
-    background-color: #003300;
-    border-color: #003300;
-}
-
-.btn-outline-primary {
-    color: #004d00;
-    border-color: #004d00;
-}
-
-.btn-outline-primary:hover {
-    background-color: #004d00;
-    color: #ffffff;
-}
-
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            font-family: Arial, sans-serif;
+            margin-top: 50px;
+        }
+        .status-bar {
+            background-color: #004d00;
+            color: #fff;
+            padding: 10px 0;
+            text-align: center;
+        }
+        .status-bar i {
+            margin-right: 10px;
+        }
+        .header {
+            text-align: center;
+            padding: 50px 20px;
+            background: linear-gradient(135deg, #004d00, #003300);
+            color: #fff;
+        }
+        .header h1 {
+            font-size: 3rem;
+        }
+        .header p {
+            font-size: 1.25rem;
+        }
+        .content {
+            margin-top: -4px;
+            padding: 30px 20px;
+        }
+        .content h2 {
+            margin-bottom: 30px;
+        }
+        .card {
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.3s ease-in-out;
+        }
+        .card:hover {
+            transform: scale(1.05);
+        }
+        .card img {
+            width: 100%;
+            height: auto;
+        }
+        .btn-read-more {
+            background-color: #004d00;
+            color: #fff;
+            border-radius: 20px;
+        }
+        .btn-read-more:hover {
+            background-color: #003300;
+            color: #fff;
+        }
+        .feature-section {
+            margin-bottom: 50px;
+        }
+        .feature-section img {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .feature-description {
+            margin-top: 20px;
+        }
+        .feature-description h3 {
+            margin-bottom: 15px;
+        }
+    </style>
     </style>
 </head>
 <body>
-    <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="
     background: linear-gradient(135deg, #004d00 50%, #002600 50%);
     padding: 1rem;
@@ -199,117 +161,91 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
     </div>
 </nav>
+    
+    <!-- Feedback Modal -->
+    <iframe src="chatbot.html" style="border:none; position:fixed; bottom:0; right:0; width:300px; height:400px; z-index:1000;"></iframe>
+</body>
 
-    <main>
-    <!-- Main Content -->
-    <div class="main-container">
-        <!-- Login Form -->
-        <div class="login-container">
-            <div class="form-header">
-            <img src="images/FinTrack.png" width="400px">
-                <h1>Sign In to FinTrack</h1>
+    <!-- Status Bar -->
+    <div class="header">
+    <h1>Discover FinTrack's Features</h1>
+    <p>Your ultimate tool for comprehensive financial management.</p>
+</div>
+
+<!-- Main Content Section -->
+<div class="container content">
+    <!-- Introduction Section -->
+    <div class="text-center mb-5">
+        <h2>Explore FinTrack's Key Features</h2>
+        <p>FinTrack offers a range of powerful features designed to help you manage your finances efficiently and effectively. From an intuitive dashboard to detailed reports, our platform provides everything you need to stay on top of your financial goals.</p>
+    </div>
+
+    <!-- Dashboard Feature Section -->
+    <div class="feature-section">
+        <h2 class="text-center mb-4">Dashboard</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <img src="images/dashboard screenshot.png" alt="Dashboard Screenshot" class="img-fluid">
             </div>
-<!-- Sign-In Form -->
-<div class="container mt-4">
-    <form action="backend/login.php" method="POST">
-        <div class="mb-3">
-            <input type="email" class="form-control" name="email" placeholder="Email" required>
+            <div class="col-md-6">
+                <div class="feature-description">
+                    <h3>Dashboard Overview</h3>
+                    <p>Our intuitive dashboard provides a comprehensive overview of your financial health. Easily track your income, expenses, and savings with real-time updates and customizable widgets.</p>
+                </div>
+            </div>
         </div>
-        <div class="mb-3">
-            <input type="password" class="form-control" name="password" placeholder="Password" required>
+    </div>
+
+    <!-- Reports Feature Section -->
+    <div class="feature-section">
+        <h2 class="text-center mb-4">Reports</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <img src="images/reports.png" alt="Reports Screenshot" class="img-fluid">
+            </div>
+            <div class="col-md-6">
+                <div class="feature-description">
+                    <h3>Detailed Reports</h3>
+                    <p>Generate detailed reports to analyze your financial activities. Customize reports based on various parameters and gain valuable insights to make informed decisions.</p>
+                </div>
+            </div>
         </div>
-        <button type="submit" class="btn btn-primary w-100">Sign In</button>
-    </form>
-    <p class="mt-3 text-center">or sign in with</p>
-    <div class="d-grid gap-2">
-        <button class="btn btn-outline-primary btn-social">Sign in with Google</button>
-        <button class="btn btn-outline-primary btn-social">Sign in with Facebook</button>
+    </div>
+
+    <!-- Transactions Feature Section -->
+    <div class="feature-section">
+        <h2 class="text-center mb-4">Transactions</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <img src="images/transactions.png" alt="Transactions Screenshot" class="img-fluid">
+            </div>
+            <div class="col-md-6">
+                <div class="feature-description">
+                    <h3>Manage Transactions</h3>
+                    <p>Effortlessly manage and categorize your transactions. Track spending, add notes, and view historical data to keep your finances organized and accessible.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Goals Feature Section -->
+    <div class="feature-section">
+        <h2 class="text-center mb-4">Goals</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <img src="images/goals_screenshot.png" alt="Goals Screenshot" class="img-fluid">
+            </div>
+            <div class="col-md-6">
+                <div class="feature-description">
+                    <h3>Set and Achieve Goals</h3>
+                    <p>Set financial goals and track your progress towards achieving them. Whether saving for a vacation or paying off debt, our goal-setting feature helps you stay motivated and on track.</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Signup Form -->
-<div class="container mt-5 signup-container">
-    <div class="form-header text-center mb-4">
-        <h2>Create Your FinTrack Account</h2>
-        <p>Get started on managing your finances effectively.</p>
-    </div>
-    <form action="backend/register.php" method="POST">
-        <!-- User Details -->
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <input type="text" class="form-control" name="full_name" placeholder="Full Name" required>
-            </div>
-            <div class="col-md-6 mb-3">
-                <input type="email" class="form-control" name="email" placeholder="Email" required>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <input type="password" class="form-control" name="password" placeholder="Password" required minlength="8">
-                <small class="form-text text-muted">Password must be at least 8 characters long.</small>
-            </div>
-            <div class="col-md-6 mb-3">
-                <input type="password" class="form-control" name="confirm_password" placeholder="Confirm Password" required>
-            </div>
-        </div>
-
-        <!-- Financial Information -->
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label for="monthly_income" class="form-label">Monthly Income</label>
-                <input type="number" class="form-control" name="monthly_income" id="monthly_income" placeholder="Enter your monthly income" required min="0" step="0.01">
-            </div>
-            <div class="col-md-6 mb-3">
-                <label for="current_savings" class="form-label">Current Savings</label>
-                <input type="number" class="form-control" name="current_savings" id="current_savings" placeholder="Enter your current savings" required min="0" step="0.01">
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label for="loan_amount" class="form-label">Loan Amount</label>
-                <input type="number" class="form-control" name="loan_amount" id="loan_amount" placeholder="Enter your current loan amount" min="0" step="0.01">
-            </div>
-            <div class="col-md-6 mb-3">
-                <label for="financial_goal" class="form-label">Financial Goal</label>
-                <input type="number" class="form-control" name="financial_goal" id="financial_goal" placeholder="Enter your financial goal amount" min="0" step="0.01">
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label for="goal_timeframe" class="form-label">Goal Timeframe (in months)</label>
-                <input type="number" class="form-control" name="goal_timeframe" id="goal_timeframe" placeholder="Enter the timeframe to achieve your goal" min="0">
-            </div>
-        </div>
-
-        <!-- Additional Information -->
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label for="age" class="form-label">Age</label>
-                <input type="number" class="form-control" name="age" id="age" placeholder="Enter your age" required min="0">
-            </div>
-            <div class="col-md-6 mb-3">
-                <label for="retirement_age" class="form-label">Retirement Age</label>
-                <input type="number" class="form-control" name="retirement_age" id="retirement_age" placeholder="Enter your planned retirement age" required min="0">
-            </div>
-        </div>
-        <div class="mb-3">
-            <label for="profession" class="form-label">Profession</label>
-            <input type="text" class="form-control" name="profession" id="profession" placeholder="Enter your profession" required>
-        </div>
-
-        <!-- Terms and Conditions -->
-        <div class="mb-3 form-check">
-            <input type="checkbox" class="form-check-input" id="terms" required>
-            <label class="form-check-label" for="terms">I agree to the <a href="privacy_policy.php">Terms and Conditions</a></label>
-        </div>
-
-        <button type="submit" class="btn btn-primary w-100">Sign Up</button>
-    </form>
-</div>
-
-    </div>
-    </main>
-     <!-- Footer -->
+    <!-- Footer -->
 <!-- Footer -->
 <footer style="
     background: linear-gradient(135deg, #004d00 50%, #002600 50%);
@@ -317,7 +253,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
     padding: 20px 0;
     margin-top: 40px;
     font-family: Arial, sans-serif;
-    width: 1000 px;
 ">
     <div class="container text-center">
         <div style="
@@ -432,9 +367,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
     </div>
 </footer>
 
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
 </body>
 </html>

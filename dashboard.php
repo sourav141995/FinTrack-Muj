@@ -6,6 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: login_signup.php');
     exit();
 }
+$current_page = basename($_SERVER['PHP_SELF']);
 
 $user_id = $_SESSION['user_id'];
 
@@ -21,8 +22,19 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+// Initialize variables
+$name = 'Guest';
+$monthly_income = 0;
+$current_savings = 0;
+$total_expenses = 0;
+$financial_goal = 0; // Changed from retirement_savings_goal to financial_goal
+$total_debt = 0;
+$years_until_retirement = 60; // Default to 60 if retirement age is not set
+$age = 0;
+$profession = '';
+
 // Retrieve user data
-$user_sql = "SELECT full_name, monthly_income, current_savings, age, profession FROM users WHERE id = ?";
+$user_sql = "SELECT full_name, monthly_income, current_savings, loan_amount, financial_goal, goal_timeframe, retirement_age, age, profession FROM users WHERE id = ?";
 $stmt = $conn->prepare($user_sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -33,19 +45,17 @@ if ($user_result->num_rows > 0) {
     $name = $user_data['full_name'];
     $monthly_income = $user_data['monthly_income'];
     $current_savings = $user_data['current_savings'];
+    $total_debt = $user_data['loan_amount'];
+    $financial_goal = $user_data['financial_goal'];
+    $goal_timeframe = $user_data['goal_timeframe'];
+    $retirement_age = $user_data['retirement_age'];
     $age = $user_data['age'];
     $profession = $user_data['profession'];
-} else {
-    $name = 'Guest'; // Fallback if no user data is found
-    $monthly_income = 0;
-    $current_savings = 0;
-    $age = 0;
-    $profession = 'Not Specified';
+    
+    // Calculate years remaining until retirement
+    $current_year = (int)date('Y');
+    $years_until_retirement = max(0, $retirement_age - ($current_year - $age));
 }
-
-// Calculate years remaining until retirement (age 60)
-$retirement_age = 60;
-$years_until_retirement = max(0, $retirement_age - $age);
 
 // Retrieve total expenses
 $expenses_sql = "SELECT SUM(amount) AS total_expenses FROM transactions WHERE user_id = ?";
@@ -57,22 +67,6 @@ $expenses_result = $stmt->get_result();
 if ($expenses_result->num_rows > 0) {
     $expenses_data = $expenses_result->fetch_assoc();
     $total_expenses = $expenses_data['total_expenses'];
-} else {
-    $total_expenses = 0; // Fallback if no expense data is found
-}
-
-// Retrieve debt information
-$debt_sql = "SELECT SUM(loan_amount) AS total_debt FROM users WHERE id = ?";
-$stmt = $conn->prepare($debt_sql);
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$debt_result = $stmt->get_result();
-
-if ($debt_result->num_rows > 0) {
-    $debt_data = $debt_result->fetch_assoc();
-    $total_debt = $debt_data['total_debt'];
-} else {
-    $total_debt = 0; // Fallback if no debt data is found
 }
 
 $stmt->close();
@@ -133,12 +127,53 @@ $conn->close();
     }
 
     /* Chart Section */
+/* Chart Container Styling */
+.chart-container {
+    background: linear-gradient(145deg, #f3f4f6, #e2e3e5); /* Dual shade background */
+    padding: 20px;
+    border-radius: 16px; /* Smoother rounded corners */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Enhanced shadow for depth */
+    margin-bottom: 20px; /* Spacing below the chart container */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 450px; /* Increased height for better chart visibility */
+    position: relative;
+    overflow: hidden; /* Ensure no overflow */
+}
+
+/* Title Styling */
+.chart-container h4 {
+    color: #333; /* Dark grey for readability */
+    margin-bottom: 20px; /* Spacing between title and chart */
+    font-size: 1.8rem; /* Slightly larger font size for emphasis */
+    text-align: center; /* Center-align the title */
+    position: absolute; /* Absolute positioning for title */
+    top: 20px; /* Position from the top */
+    left: 50%; /* Center horizontally */
+    transform: translateX(-50%); /* Center horizontally */
+    font-weight: bold; /* Bold title for prominence */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); /* Subtle text shadow for depth */
+}
+
+/* Canvas Styling */
+.chart-container canvas {
+    width: 100% !important; /* Ensure canvas fits within the container */
+    height: 80% !important; /* Maintain aspect ratio */
+    max-width: 400px; /* Optional: Set a max-width for larger screens */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
     .chart-container {
-        background-color: #ffffff; /* White background for charts */
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        height: 350px; /* Adjust height for smaller screens */
     }
+    
+    .chart-container h4 {
+        font-size: 1.4rem; /* Adjust font size for smaller screens */
+    }
+}
 
     /* Widget Section */
     .card-header {
@@ -225,43 +260,74 @@ $conn->close();
             flex-grow: 1; /* Allow navbar items to grow */
         ">
             <li class="nav-item" style="margin-left: 1rem;">
-                <a class="nav-link active" href="dashboard.php" style="
+                <a class="nav-link <?php echo ($current_page == 'dashboard.php') ? 'active' : ''; ?>" href="dashboard.php" style="
                     color: #fff;
                     transition: color 0.3s, transform 0.3s;
-                ">Dashboard</a>
+                    padding: 10px 15px;
+                    border-radius: 20px;
+                    box-shadow: <?php echo ($current_page == 'dashboard.php') ? '0px 4px 15px rgba(0, 255, 0, 0.6)' : 'none'; ?>;
+                    background-color: <?php echo ($current_page == 'dashboard.php') ? 'rgba(0, 255, 0, 0.2)' : 'transparent'; ?>;
+                    font-weight: <?php echo ($current_page == 'dashboard.php') ? 'bold' : 'normal'; ?>;
+                " onmouseover="this.style.color='#00ff00';" onmouseout="this.style.color='#fff';">
+                    Dashboard
+                </a>
             </li>
             <li class="nav-item" style="margin-left: 1rem;">
-                <a class="nav-link" href="goals.php" style="
+                <a class="nav-link <?php echo ($current_page == 'goals.php') ? 'active' : ''; ?>" href="goals.php" style="
                     color: #fff;
                     transition: color 0.3s, transform 0.3s;
-                ">Goals</a>
+                    padding: 10px 15px;
+                    border-radius: 20px;
+                    box-shadow: <?php echo ($current_page == 'goals.php') ? '0px 4px 15px rgba(0, 255, 0, 0.6)' : 'none'; ?>;
+                    background-color: <?php echo ($current_page == 'goals.php') ? 'rgba(0, 255, 0, 0.2)' : 'transparent'; ?>;
+                    font-weight: <?php echo ($current_page == 'goals.php') ? 'bold' : 'normal'; ?>;
+                " onmouseover="this.style.color='#00ff00';" onmouseout="this.style.color='#fff';">
+                    Goals
+                </a>
             </li>
             <li class="nav-item" style="margin-left: 1rem;">
-                <a class="nav-link" href="transactions.php" style="
+                <a class="nav-link <?php echo ($current_page == 'transactions.php') ? 'active' : ''; ?>" href="transactions.php" style="
                     color: #fff;
                     transition: color 0.3s, transform 0.3s;
-                ">Transactions</a>
+                    padding: 10px 15px;
+                    border-radius: 20px;
+                    box-shadow: <?php echo ($current_page == 'transactions.php') ? '0px 4px 15px rgba(0, 255, 0, 0.6)' : 'none'; ?>;
+                    background-color: <?php echo ($current_page == 'transactions.php') ? 'rgba(0, 255, 0, 0.2)' : 'transparent'; ?>;
+                    font-weight: <?php echo ($current_page == 'transactions.php') ? 'bold' : 'normal'; ?>;
+                " onmouseover="this.style.color='#00ff00';" onmouseout="this.style.color='#fff';">
+                    Transactions
+                </a>
             </li>
             <li class="nav-item" style="margin-left: 1rem;">
-                <a class="nav-link" href="reports.php" style="
+                <a class="nav-link <?php echo ($current_page == 'reports.php') ? 'active' : ''; ?>" href="reports.php" style="
                     color: #fff;
                     transition: color 0.3s, transform 0.3s;
-                ">Reports</a>
+                    padding: 10px 15px;
+                    border-radius: 20px;
+                    box-shadow: <?php echo ($current_page == 'reports.php') ? '0px 4px 15px rgba(0, 255, 0, 0.6)' : 'none'; ?>;
+                    background-color: <?php echo ($current_page == 'reports.php') ? 'rgba(0, 255, 0, 0.2)' : 'transparent'; ?>;
+                    font-weight: <?php echo ($current_page == 'reports.php') ? 'bold' : 'normal'; ?>;
+                " onmouseover="this.style.color='#00ff00';" onmouseout="this.style.color='#fff';">
+                    Reports
+                </a>
             </li>
         </ul>
-        <div>
+        
         <!-- Logout Button aligned to the right -->
-        <ul class="navbar-nav" style="margin-left: auto;">
-            <li class="nav-item">
-                <form action="logout.php" method="post" class="d-inline">
-                    <button type="submit" class="btn btn-outline-light" style="
-                        color: #fff;
-                        border-color: #fff;
-                        transition: background-color 0.3s, color 0.3s;
-                    ">Logout</button>
-                </form>
-            </li>
-        </ul>
+        <div>
+            <ul class="navbar-nav" style="margin-left: auto;">
+                <li class="nav-item">
+                    <form action="logout.php" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light" style="
+                            color: #fff;
+                            border-color: #fff;
+                            transition: background-color 0.3s, color 0.3s;
+                        " onmouseover="this.style.backgroundColor='#00ff00'; this.style.color='#004d00';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#fff';">
+                            Logout
+                        </button>
+                    </form>
+                </li>
+            </ul>
         </div>
     </div>
 </nav>
@@ -271,62 +337,174 @@ $conn->close();
     <iframe src="chatbot.html" style="border:none; position:fixed; bottom:0; right:0; width:300px; height:400px; z-index:1000;"></iframe>
 <main>
     <!-- Dashboard Content -->
-    <div class="container" style="padding-top: 100px;">
-        <!-- Welcome Section -->
-        <h2>Welcome, <?php echo htmlspecialchars($name); ?></h2>
-        <p>Profession: <?php echo htmlspecialchars($profession); ?></p>
-        <p>Age: <?php echo htmlspecialchars($age); ?> years</p>
-        <p>Years until Retirement: <?php echo htmlspecialchars($years_until_retirement); ?></p>
 
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body">
-                        <i class="fas fa-wallet"></i>
-                        Total Savings: $<?php echo number_format($current_savings, 2); ?>
-                    </div>
+    <div class="container">
+    <h2>Welcome, <?php echo htmlspecialchars($name); ?>!</h2>
+    <div class="row">
+        <!-- Monthly Income -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h4>Monthly Income</h4>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body">
-                        <i class="fas fa-money-bill-wave"></i>
-                        Monthly Income: $<?php echo number_format($monthly_income, 2); ?>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body">
-                        <i class="fas fa-chart-line"></i>
-                        Total Expenses: $<?php echo number_format($total_expenses, 2); ?>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body">
-                        <i class="fas fa-credit-card"></i>
-                        Total Debt: $<?php echo number_format($total_debt, 2); ?>
-                    </div>
+                <div class="card-body d-flex align-items-center">
+                    <i class="fas fa-money-bill-wave fa-2x me-2"></i>
+                    <span class="h3 mb-0">₹<?php echo number_format($monthly_income, 2); ?></span>
                 </div>
             </div>
         </div>
-
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <!-- Charts Section -->
-                <div class="chart-container">
-                    <canvas id="expensesChart"></canvas>
+        <!-- Current Savings -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h4>Current Savings</h4>
+                </div>
+                <div class="card-body d-flex align-items-center">
+                    <i class="fas fa-piggy-bank fa-2x me-2"></i>
+                    <span class="h3 mb-0">₹<?php echo number_format($current_savings, 2); ?></span>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <canvas id="incomeChart"></canvas>
+        </div>
+<!-- Expense vs. Income Ratio -->
+<div class="col-lg-4 col-md-6 mb-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h4>Expense vs. Income Ratio</h4>
+        </div>
+        <div class="card-body d-flex align-items-center">
+            <i class="fas fa-chart-pie fa-2x me-2"></i>
+            <span class="h3 mb-0">
+                <?php 
+                    // Calculate the expense to income ratio
+                    $expense_to_income_ratio = ($monthly_income > 0) ? ($total_expenses / $monthly_income) * 100 : 0;
+                    echo number_format($expense_to_income_ratio, 2) . '%';
+                ?>
+            </span>
+        </div>
+    </div>
+</div>
+
+     <!-- Years Left for Retirement -->
+<div class="col-lg-4 col-md-6 mb-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4>Years Left for Retirement</h4>
+        </div>
+        <div class="card-body d-flex align-items-center">
+            <i class="fas fa-calendar-day fa-2x me-2"></i>
+            <span class="h3 mb-0">
+                <?php 
+                    // Calculate years left for retirement
+                    $years_left_for_retirement = max(0, $retirement_age - $age);
+                    echo $years_left_for_retirement; 
+                ?> 
+                years
+            </span>
+        </div>
+    </div>
+</div>
+
+        <!-- Total Debt -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h4>Total Debt</h4>
+                </div>
+                <div class="card-body d-flex align-items-center">
+                    <i class="fas fa-credit-card fa-2x me-2"></i>
+                    <span class="h3 mb-0">₹<?php echo number_format($total_debt, 2); ?></span>
+                </div>
+            </div>
+        </div>
+        <!-- Personal Details -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h4>Personal Details</h4>
+                </div>
+                <div class="card-body d-flex align-items-center">
+                    <i class="fas fa-user fa-2x me-2"></i>
+                    <span class="h3 mb-0">Age: <?php echo $age; ?>, Profession: <?php echo htmlspecialchars($profession); ?></span>
                 </div>
             </div>
         </div>
     </div>
+</div>
+
+        <!-- Update Profile Button -->
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#profileModal" style="margin-left: 10px;">
+        Update Profile
+    </button>
+
+    <!-- Profile Modal -->
+<!-- Profile Modal -->
+<div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="profileModalLabel">Update Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Profile Form -->
+                <form action="update_profile.php" method="post">
+                    <div class="mb-3">
+                        <label for="monthly_income" class="form-label">Monthly Income</label>
+                        <input type="number" step="0.01" class="form-control" id="monthly_income" name="monthly_income" value="<?php echo htmlspecialchars($monthly_income); ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="current_savings" class="form-label">Current Savings</label>
+                        <input type="number" step="0.01" class="form-control" id="current_savings" name="current_savings" value="<?php echo htmlspecialchars($current_savings); ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="loan_amount" class="form-label">Loan Amount</label>
+                        <input type="number" step="0.01" class="form-control" id="loan_amount" name="loan_amount" value="<?php echo htmlspecialchars($loan_amount); ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label for="retirement_age" class="form-label">Retirement Age</label>
+                        <input type="number" class="form-control" id="retirement_age" name="retirement_age" value="<?php echo htmlspecialchars($retirement_age); ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label for="age" class="form-label">Age</label>
+                        <input type="number" class="form-control" id="age" name="age" value="<?php echo htmlspecialchars($age); ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="profession" class="form-label">Profession</label>
+                        <input type="text" class="form-control" id="profession" name="profession" value="<?php echo htmlspecialchars($profession); ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="password" name="password">
+                        <div class="form-text">Leave blank if you do not want to change your password.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
+                
+                <!-- Delete Account Form -->
+                <form action="delete_account.php" method="post" class="mt-4">
+                    <div class="alert alert-danger" role="alert">
+                        Deleting your account is irreversible. All your data will be lost.
+                    </div>
+                    <button type="submit" class="btn btn-danger">Delete Account</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="chart-container">
+            <h4>Financial Overview</h4>
+            <canvas id="incomeChart"></canvas>
+        </div>
+    </div>
+</div>
+
 
      <!-- Goals Widget -->
      <div class="row mt-4">
@@ -371,27 +549,41 @@ $conn->close();
 
 </main>
   <!-- Footer -->
+<!-- Footer -->
 <footer style="
-    background: linear-gradient(135deg, #004d00 50%, #002600 50%); /* Dual-shade background */
+    background: linear-gradient(135deg, #004d00 50%, #002600 50%);
     color: #ffffff;
-    padding: 10px 0;
+    padding: 20px 0;
     margin-top: 40px;
+    font-family: Arial, sans-serif;
 ">
-    <div class="container text-center">
+    <div class="containerf text-center">
         <div style="
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
             flex-wrap: wrap;
+            max-width: 1200px; 
+            margin: 0 auto;
         ">
             <!-- About the Project Section -->
             <div style="
                 max-width: 400px; 
                 margin-bottom: 20px;
+                text-align: left;
             ">
-                <h4>About the Project</h4>
-                <p style="color: #ffffff;">This project, FinTrack, is developed as part of the final year MCA program at Manipal University Jaipur by Sourav Sharma.</p>
-                <p style="color: #ffffff;">Roll Number: 2214505923, Batch 4 MCA</p>
+                <h4 style="
+                    margin-bottom: 10px;
+                    font-size: 1.2em;
+                    color: #d4edda;
+                ">About the Project</h4>
+                <p style="
+                    color: #ffffff;
+                    margin-bottom: 5px;
+                ">This project, FinTrack, is developed as part of the final year MCA program at Manipal University Jaipur by Sourav Sharma.</p>
+                <p style="
+                    color: #ffffff;
+                ">Roll Number: 2214505923, Batch 4 MCA</p>
             </div>
             
             <!-- Developer Contact Section with QR Code -->
@@ -399,10 +591,15 @@ $conn->close();
                 text-align: center; 
                 margin-bottom: 20px;
             ">
-                <h4>Contact the Developer</h4>
+                <h4 style="
+                    margin-bottom: 10px;
+                    font-size: 1.2em;
+                    color: #d4edda;
+                ">Contact the Developer</h4>
                 <img src="images/QR_Sourav.png" alt="Developer QR Code" style="
                     width: 120px; 
                     height: 120px;
+                    border-radius: 10px;
                 ">
             </div>
             
@@ -411,12 +608,15 @@ $conn->close();
                 text-align: right; 
                 max-width: 400px; 
                 margin-bottom: 20px; 
-                background-color: #ffffff; /* White background for logo section */
+                background-color: #ffffff; 
                 padding: 10px; 
                 border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             ">
                 <img src="images/Muj Logo.png" alt="Manipal University Jaipur Logo" class="footer-img" style="
-                    width: 100%; /* Ensure the logo fits within the div */
+                    width: 100%; 
+                    max-width: 200px; /* Ensure the logo doesn't get too large */
+                    border-radius: 5px;
                 ">
             </div>
         </div>
@@ -424,53 +624,107 @@ $conn->close();
         <!-- Horizontal Divider -->
         <hr style="
             border-top: 1px solid #d4edda;
+            margin: 20px auto;
+            max-width: 800px;
         ">
         
+        <!-- Footer Links -->
+        <div style="
+            display: flex; 
+            justify-content: center; 
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        ">
+            <a href="help_support.php" style="
+                color: #ffffff; 
+                text-decoration: none; 
+                font-size: 1em; 
+                padding: 5px 10px;
+                border-radius: 5px;
+                transition: background-color 0.3s ease;
+            ">Help Center</a>
+            <a href="about_us.php" style="
+                color: #ffffff; 
+                text-decoration: none; 
+                font-size: 1em; 
+                padding: 5px 10px;
+                border-radius: 5px;
+                transition: background-color 0.3s ease;
+            ">About Us</a>
+            <a href="privacy_policy.php" style="
+                color: #ffffff; 
+                text-decoration: none; 
+                font-size: 1em; 
+                padding: 5px 10px;
+                border-radius: 5px;
+                transition: background-color 0.3s ease;
+            ">Privacy Policy</a>
+        </div>
+        
         <!-- Footer Copyright -->
-        <p style="color: #ffffff;">&copy; 2024 FinTrack. All Rights Reserved.</p>
+        <p style="
+            color: #ffffff;
+            font-size: 0.9em;
+        ">&copy; 2024 FinTrack. All Rights Reserved.</p>
     </div>
 </footer>
 
 
+
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Chart.js configuration
-        const expensesCtx = document.getElementById('expensesChart').getContext('2d');
-        new Chart(expensesCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Rent', 'Utilities', 'Groceries', 'Others'],
-                datasets: [{
-                    label: 'Expenses',
-                    data: [<?php echo $total_expenses; ?>],
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
+// Chart.js configuration
+const incomeCtx = document.getElementById('incomeChart').getContext('2d');
+const incomeChart = new Chart(incomeCtx, {
+    type: 'pie',
+    data: {
+        labels: [
+            'Monthly Income',
+            'Current Savings',
+            'Total Expenses',
+            'Total Debt'
+        ],
+        datasets: [{
+            label: 'Financial Data',
+            data: [
+                <?php echo $monthly_income; ?>,
+                <?php echo $current_savings; ?>,
+                <?php echo $total_expenses; ?>,
+                <?php echo $total_debt; ?>
+            ],
+            backgroundColor: [
+                'rgba(54, 162, 235, 0.2)', // Blue for Monthly Income
+                'rgba(255, 159, 64, 0.2)', // Orange for Current Savings
+                'rgba(75, 192, 192, 0.2)', // Teal for Total Expenses
+                'rgba(255, 99, 132, 0.2)'  // Red for Total Debt
+            ],
+            borderColor: [
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 159, 64, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(255, 99, 132, 1)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'top',
             },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
+            tooltip: {
+                callbacks: {
+                    label: function(tooltipItem) {
+                        return tooltipItem.label + ': ₹' + tooltipItem.raw.toLocaleString();
                     }
                 }
             }
-        });
-
-        const incomeCtx = document.getElementById('incomeChart').getContext('2d');
-        new Chart(incomeCtx, {
-            type: 'pie',
-            data: {
-                labels: ['Monthly Income', 'Current Savings'],
-                datasets: [{
-                    label: 'Income',
-                    data: [<?php echo $monthly_income; ?>, <?php echo $current_savings; ?>],
-                    backgroundColor: ['rgba(54, 162, 235, 0.2)', 'rgba(255, 159, 64, 0.2)'],
-                    borderColor: ['rgba(54, 162, 235, 1)', 'rgba(255, 159, 64, 1)'],
-                    borderWidth: 1
-                }]
-            }
-        });
-    </script>
+        }
+    }
+});
+</script>
 </body>
 </html>
